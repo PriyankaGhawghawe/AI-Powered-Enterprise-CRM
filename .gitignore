@@ -202,3 +202,12 @@ my_env.tfvars
 
 # A2A Inspector
 tools/a2a-inspector/
+
+# Project-specific runtime files (auto-generated, should not be committed)
+*.db
+*.pdf
+.test_token
+cron_debug.log
+app/audit_logs.json
+data_struct.json
+frontend-react/test_pdf.js
