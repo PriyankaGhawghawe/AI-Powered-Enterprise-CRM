@@ -233,7 +233,7 @@ const DatabaseTab = () => {
                 const isLost = deal.stage === 'Closed Lost';
 
                 return (
-                <tr key={idx} className={`group transition-colors ${isWon ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : isLost ? 'bg-slate-50 dark:bg-slate-800/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                <tr key={deal.id || idx} className={`group transition-colors ${isWon ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : isLost ? 'bg-slate-50 dark:bg-slate-800/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                   
                   {/* Name */}
                   <td className="px-6 py-3">
