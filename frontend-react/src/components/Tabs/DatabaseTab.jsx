@@ -165,7 +165,7 @@ const DatabaseTab = () => {
             <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
                <FaDollarSign className="text-blue-500" />
             </div>
-            Active Pipeline Value
+            {activeRole === 'Employee' ? 'My Active Pipeline Value' : 'Active Pipeline Value'}
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white">
             ${totalPipelineValue.toLocaleString()}
@@ -178,7 +178,7 @@ const DatabaseTab = () => {
             <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
                <FaCircleCheck className="text-emerald-500" />
             </div>
-            Closed Won Value
+            {activeRole === 'Employee' ? 'My Closed Won Value' : 'Closed Won Value'}
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white">
             ${wonValue.toLocaleString()}
@@ -186,18 +186,20 @@ const DatabaseTab = () => {
           <p className="text-sm text-emerald-500 mt-2 font-medium">{wonDeals.length} deals closed</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-rose-500 transition-colors">
-          <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-semibold mb-2">
-            <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
-               <FaTriangleExclamation className="text-rose-500" />
+        {activeRole !== 'Employee' && (
+          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-rose-500 transition-colors">
+            <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-semibold mb-2">
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
+                 <FaTriangleExclamation className="text-rose-500" />
+              </div>
+              Critical / Stalled Deals
             </div>
-            Critical / Stalled Deals
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">
+              {criticalDeals.length}
+            </div>
+            <p className="text-sm text-rose-500 mt-2 font-medium">{criticalDeals.reduce((acc, d) => acc + (d.value||0), 0).toLocaleString()} at risk ({">"} 30 days)</p>
           </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white">
-            {criticalDeals.length}
-          </div>
-          <p className="text-sm text-rose-500 mt-2 font-medium">{criticalDeals.reduce((acc, d) => acc + (d.value||0), 0).toLocaleString()} at risk ({">"} 30 days)</p>
-        </div>
+        )}
       </div>
 
       {/* Main Deal List */}

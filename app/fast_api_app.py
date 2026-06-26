@@ -492,7 +492,12 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
         financials["historical_performance"] = historical
 
         deals = []
+        user_role = token_data.get("role", "Employee")
+        username = token_data.get("sub", "Unknown")
         for d in db.query(SalesDeal).all():
+            # Row-level downscoping: Employees only see their own assigned deals
+            if user_role == "Employee" and d.owner != username:
+                continue
             deals.append({"id": d.id, "name": d.name, "value": d.value, "stage": d.stage, "probability": float(d.probability), "owner": d.owner, "age_days": d.age_days})
 
         competitors = []
@@ -1171,6 +1176,12 @@ class WarRoomRequest(BaseModel):
 
 @app.post("/api/warroom/debate")
 async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_current_user_token)):
+    user_role = token_data.get("role", "Employee")
+    if user_role == "Employee":
+        raise HTTPException(
+            status_code=403,
+            detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity."
+        )
     from fastapi.responses import StreamingResponse
     import google.generativeai as genai
     import json
