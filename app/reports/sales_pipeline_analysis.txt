@@ -1,0 +1,41 @@
+### Sales Pipeline Health Analysis
+
+The overall active pipeline value is strong, but significant risks exist due to stalled deals and high dependency on a single Sales Representative for large opportunities.
+
+| Metric | Value | Insight |
+| :--- | :--- | :--- |
+| **Total Active Pipeline Value** | **$93,000** | Represents the potential maximum revenue from current deals. |
+| **Weighted Pipeline Value** | **$62,800** | The probable future revenue based on stage probability. |
+| **Average Deal Cycle** | **42 Days** | The benchmark for identifying deals at risk. |
+| **Highest Risk Deal** | **$30,000 (Vortex Finance)** | **90 days** in the pipeline (2.1x the average cycle). |
+
+---
+
+### 1. Unusually Large Deals
+
+The pipeline is currently dominated by two deals that are significantly larger than the average deal size ($18,600). These two deals represent nearly 60% of the entire active pipeline value.
+
+*   **Vortex Finance:** $30,000 (Negotiation, 90 days old)
+*   **Acme Corp Enterprise:** $25,000 (Proposal, 45 days old)
+*   **Total Value (2 Deals):** $55,000
+
+---
+
+### 2. Pipeline Risks: Stalled High-Value Deals
+
+The primary risk is the severe stagnation of the largest opportunities, which significantly exceeds the average sales cycle of **42 days**.
+
+| Deal Name | Value | Stage | Age (Days) | Risk Level |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vortex Finance** | **$30,000** | Negotiation | **90** | **HIGH** |
+| **GlobalTech Integration** | **$18,000** | Negotiation | **60** | **MODERATE** |
+| **Acme Corp Enterprise** | **$25,000** | Proposal | **45** | **SLIGHT** |
+
+---
+
+### 3. Key-Person Dependency Risk
+
+Sales Rep **Sarah Jenkins** owns all three high-risk, aging, and high-value deals, representing **$73,000 (78.5%)** of the total active pipeline value. This concentration creates risks of bottlenecking and key-person dependency.
+
+**Sales Operations Recommendation:**
+The immediate focus must be on diagnosing and resolving the bottlenecks in the **Vortex Finance** and **GlobalTech Integration** deals to prevent them from becoming losses.

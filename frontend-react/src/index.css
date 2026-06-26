@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* We can put custom base layer resets here if needed, but Tailwind covers most. */
+@layer base {
+  body {
+    @apply antialiased text-slate-900 bg-slate-50 dark:text-slate-50 dark:bg-slate-900 transition-colors duration-300;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  /* Apply universal micro-animations to all buttons to make the UI feel alive */
+  button {
+    @apply transition-transform duration-200 active:scale-[0.97];
+  }
+  
+  /* Enhance the standard buttons without targeting icons/toggles indiscriminately */
+  button[type="submit"], 
+  button:not([class*="absolute"]):not([class*="fixed"]) {
+    @apply hover:scale-[1.02];
+  }
+}

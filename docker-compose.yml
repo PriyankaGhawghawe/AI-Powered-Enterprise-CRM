@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  business-os:
+    build: .
+    container_name: business-os
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./business_os.db:/code/business_os.db
+    environment:
+      - SECRET_KEY=super-secret-key-for-business-os-override-in-prod
+      # If using google cloud/genai, you'd mount keys or set env vars here:
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    restart: unless-stopped
