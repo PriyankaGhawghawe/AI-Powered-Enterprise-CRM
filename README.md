@@ -117,6 +117,8 @@ CEO also has direct access to:
 ### Key Agent Patterns
 
 - **Hierarchical Delegation:** The CEO Agent uses ADK's `sub_agents` to route finance questions to the CFO, sales questions to the Sales Agent, etc. For complex queries like "Give me a full business health audit," the CEO coordinates all four agents and synthesizes a board-level report.
+- **JIT Agent-Scoped Downscoping (Zero Ambient Authority):** Direct database query helper functions enforce strict JIT execution limits. Agents have access only to what they need (`get_financial_summary` requires the CFO agent context, `get_sales_pipeline` requires the Sales agent context, etc.), protecting sensitive records from unauthorized agent queries.
+- **Session Convergence Evaluation (Quality Flywheel):** Every user conversation compiles multi-turn metrics at completion (total conversation turns, convergence/satisfaction success estimation, and total estimated API token cost in USD) which are logged securely to the immutable system audit trail.
 - **Tool Confirmation (Human-in-the-Loop):** Email and Drive export tools use ADK's `require_confirmation` with dynamic role-based callbacks. Only Owners/Managers can trigger email drafts, and only Owners can export to Drive.
 - **RBAC-Aware Agents:** Agent tool context carries the authenticated user's role. The PII scrubber masks emails, phone numbers, and credit card numbers before they reach the LLM. Role-based system directives dynamically restrict what data the AI can disclose to Employees vs. Owners.
 - **Live Web Search:** The Market Agent has access to `fetch_market_news`, a tool that queries DuckDuckGo in real-time, allowing the agent to incorporate breaking news and competitor updates into its analysis.
