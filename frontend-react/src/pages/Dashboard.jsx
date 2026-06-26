@@ -144,6 +144,13 @@ const Dashboard = () => {
                 {isExporting ? <FaCircleNotch className="animate-spin" /> : <FaFilePdf />} 
                 <span className="hidden sm:inline">{isExporting ? 'Generating...' : 'Export PDF'}</span>
               </button>
+
+              <button 
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-md transition-all text-sm font-semibold"
+              >
+                <span>Sign Out</span>
+              </button>
           </div>
         </header>
 
