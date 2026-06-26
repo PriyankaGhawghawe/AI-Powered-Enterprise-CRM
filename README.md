@@ -160,7 +160,10 @@ This platform implements **enterprise-grade, SOC 2-aligned** security controls:
 | **Password Hashing** | `bcrypt` via `passlib` | All passwords are computationally salted and hashed. Plaintext passwords never touch the database. |
 | **JWT Authentication** | `PyJWT` with HS256 | Stateless token-based auth with cryptographically signed payloads containing role, username, and token version. |
 | **Instant Token Revocation** | `token_version` column | When an admin changes a user's role or resets their password, the user's `token_version` is incremented, immediately invalidating all active sessions. |
-| **RBAC Enforcement** | Three-tier (Owner, Manager, Employee) | Every API endpoint enforces role checks. The AI chat backend **ignores client-provided roles** and extracts the verified role from the JWT, preventing privilege escalation. |
+| **RBAC & JIT Downscoping** | Direct DB tool checks | Every database retrieval tool enforces JIT Agent-Scoped downscoping checks. If an agent attempts queries outside its designated domain (e.g. Sales querying finance), the query is immediately blocked. |
+| **Dynamic Sandboxing** | Directory containment & injection scanning | File read/write tools validate that target paths resolve within `/app/reports`, preventing path traversal egress. Agent-generated content is scanned to block malicious injection attempts (`import`, `eval`, etc.). |
+| **Observability (Pillar 6 & 7)** | OpenTelemetry spans | Structured span instrumentations trace execution flows down to `agent.session`, `agent.think`, `agent.tool`, and `agent.tool_response` spans for detailed tracking. |
+| **Evaluation Quality Flywheel** | GenAI Satisfaction Evaluator | An automated GenAI-based judge compares the initial user message against final response to score user satisfaction (1-5 scale) and trace token costs. |
 | **API Key Encryption** | AES-256 via `cryptography.fernet` | Third-party integration API keys are symmetrically encrypted before database storage. Decrypted only in memory during active syncs. |
 | **PII Scrubbing** | Regex-based masking | Emails, phone numbers, and credit card numbers are automatically masked before reaching the AI model. |
 | **Comprehensive Audit Logging** | Immutable event log | Tracks: logins (success/fail), user creation/deletion, role changes, password resets, AI prompts, tool approvals/rejections, and all RBAC violations. Exportable as CSV. |
@@ -179,7 +182,7 @@ This platform implements **enterprise-grade, SOC 2-aligned** security controls:
 | **Database** | SQLite (via SQLAlchemy ORM) |
 | **Live Search** | DuckDuckGo Search API (for real-time market news) |
 | **DevOps** | Docker (multi-stage build), Docker Compose, uv (Python package manager) |
-| **Observability** | OpenTelemetry, Google Cloud Trace, Cloud Logging |
+| **Observability & Eval** | OpenTelemetry tracer, GenAI Satisfaction Judge, Google Cloud Trace, Cloud Logging |
 
 ---
 
