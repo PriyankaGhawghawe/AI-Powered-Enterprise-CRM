@@ -48,6 +48,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Navigation</p>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
+          
+          // Role-based visibility check for Employees (cannot see Users, Integrations, Audit Log)
+          if (activeRole === 'Employee') {
+            if (['tab-users', 'tab-integrations', 'tab-audit'].includes(tab.id)) {
+              return null;
+            }
+          }
+
           return (
             <button
               key={tab.id}
