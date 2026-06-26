@@ -1,1 +1,0 @@
-Failed to generate weekly executive summary. The required input files, 'cfo_summary.txt' and 'sales_pipeline.txt', could not be found on the filesystem.

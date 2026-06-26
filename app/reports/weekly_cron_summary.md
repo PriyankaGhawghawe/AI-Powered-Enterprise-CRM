@@ -1,1 +1,0 @@
-Weekly Executive Summary: Unable to generate a comprehensive report. Financial summary and sales pipeline data files (financial_summary.txt, sales_pipeline.txt) are missing. Please ensure these reports are available for future cron job execution to provide detailed insights.
