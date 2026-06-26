@@ -146,3 +146,6 @@ app = App(
     name="app",
     resumability_config=ResumabilityConfig(is_resumable=True)
 )
+
+root_agent = ceo_agent
+

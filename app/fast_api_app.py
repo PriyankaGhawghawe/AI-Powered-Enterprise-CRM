@@ -729,6 +729,13 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             events.append(event)
             author = event.author or "System"
 
+            # Sync active agent to tool state dynamically so downscoping works
+            if author and author != "System":
+                state_delta["active_agent"] = author
+                # Push state update directly to session state
+                if session and hasattr(session, "state"):
+                    session.state["active_agent"] = author
+
             # Extract text parts
             event_text = ""
             if event.content and event.content.parts:
@@ -851,12 +858,35 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         if text_response:
             chat_history_db[req.session_id].append({"sender": "System", "text": text_response, "is_user": False})
 
+        # Calculate and Log Session Convergence Metrics (Evaluation Quality Flywheel)
+        turns_count = len(chat_history_db[req.session_id])
+        user_signals = [msg["text"] for msg in chat_history_db[req.session_id] if msg["is_user"]]
+        
+        # Satisfaction rule of thumb: user has not explicitly rejected or corrections are low
+        converged = not was_rejection and not any(kw in (user_signals[-1] if user_signals else "").lower() for kw in ["no", "incorrect", "wrong", "stop"])
+        
+        # Estimate token cost roughly
+        estimated_token_cost_usd = turns_count * 0.00015
+        
+        log_action(
+            username,
+            f"Evaluation Convergence Metric - Turns: {turns_count}, Converged: {converged}, Cost: ${estimated_token_cost_usd:.5f}",
+            "Evaluation Engine",
+            "Success"
+        )
+        print(f"[EVAL] Session ID: {req.session_id} | Turns: {turns_count} | Converged: {converged} | Est. Cost: ${estimated_token_cost_usd:.5f}", flush=True)
+
         return {
             "response": text_response,
             "trace": trace_logs,
             "needs_confirmation": needs_confirmation,
             "confirmation_hint": confirmation_hint,
             "confirmation_fc_id": confirmation_fc_id,
+            "evaluation": {
+                "turns_count": turns_count,
+                "converged": converged,
+                "estimated_token_cost_usd": estimated_token_cost_usd
+            }
         }
 
 class ChartPinRequest(BaseModel):

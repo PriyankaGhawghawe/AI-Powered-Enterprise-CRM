@@ -54,6 +54,12 @@ def get_financial_summary(tool_context: ToolContext) -> dict:
     Returns:
         A dictionary containing cash balance, MRR, individual expenses, total monthly expenses, and financial runway in months.
     """
+    # Enforce JIT Agent-Scoped Downscoping
+    caller = tool_context.state.get("active_agent") or "ceo_agent"
+    # Allow cfo_agent and ceo_agent (or cron-bot background tasks)
+    if "cfo" not in caller and "ceo" not in caller and "cron" not in caller:
+        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access financial database details (requires CFO role).")
+
     db = SessionLocal()
     try:
         metrics = {m.key: m.value for m in db.query(BusinessMetric).all()}
@@ -97,6 +103,11 @@ def get_sales_pipeline(tool_context: ToolContext) -> dict:
     Returns:
         A dictionary mapping pipeline stages to deals, total value, and average deal cycle.
     """
+    # Enforce JIT Agent-Scoped Downscoping
+    caller = tool_context.state.get("active_agent") or "ceo_agent"
+    if "sales" not in caller and "ceo" not in caller and "cron" not in caller:
+        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access sales pipeline (requires Sales Operations role).")
+
     db = SessionLocal()
     try:
         deals = db.query(SalesDeal).all()
@@ -125,6 +136,11 @@ def get_market_intelligence(tool_context: ToolContext) -> dict:
     Returns:
         A dictionary containing competitor matrix and market insights.
     """
+    # Enforce JIT Agent-Scoped Downscoping
+    caller = tool_context.state.get("active_agent") or "ceo_agent"
+    if "market" not in caller and "ceo" not in caller and "cron" not in caller:
+        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access market intelligence (requires Market Analyst role).")
+
     db = SessionLocal()
     try:
         competitors = [{"name": c.name, "market_share": c.market_share, "pricing": c.pricing, "strengths": c.strengths, "weaknesses": c.weaknesses} for c in db.query(Competitor).all()]
@@ -147,6 +163,11 @@ def get_compliance_status(tool_context: ToolContext) -> dict:
     Returns:
         A dictionary detailing compliance checks and risk alerts.
     """
+    # Enforce JIT Agent-Scoped Downscoping
+    caller = tool_context.state.get("active_agent") or "ceo_agent"
+    if "compliance" not in caller and "ceo" not in caller and "cron" not in caller:
+        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access compliance status (requires Compliance Officer role).")
+
     db = SessionLocal()
     try:
         checklist = [{"item": c.item, "status": c.status} for c in db.query(ComplianceChecklist).all()]
