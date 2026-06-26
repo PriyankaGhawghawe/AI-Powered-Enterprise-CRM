@@ -712,6 +712,9 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         )
     state_delta = {"user_role": req.role}
 
+    from opentelemetry import trace as otel_trace
+    tracer = otel_trace.get_tracer("business_os_agents")
+
     events = []
     text_response = ""
     needs_confirmation = False
@@ -720,29 +723,39 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
     trace_logs = []
 
     try:
-        async for event in runner.run_async(
-            user_id=req.user_id,
-            session_id=req.session_id,
-            new_message=new_message,
-            state_delta=state_delta,
-        ):
-            events.append(event)
-            author = event.author or "System"
+        # Integrated structured OpenTelemetry spans for agent.session tracking (Pillar 6 & 7)
+        with tracer.start_as_current_span("agent.session") as session_span:
+            session_span.set_attribute("session_id", req.session_id)
+            session_span.set_attribute("user_role", req.role)
+            
+            async for event in runner.run_async(
+                user_id=req.user_id,
+                session_id=req.session_id,
+                new_message=new_message,
+                state_delta=state_delta,
+            ):
+                events.append(event)
+                author = event.author or "System"
 
-            # Sync active agent to tool state dynamically so downscoping works
-            if author and author != "System":
-                state_delta["active_agent"] = author
-                # Push state update directly to session state
-                if session and hasattr(session, "state"):
-                    session.state["active_agent"] = author
+                # Sync active agent to tool state dynamically so downscoping works
+                if author and author != "System":
+                    state_delta["active_agent"] = author
+                    # Push state update directly to session state
+                    if session and hasattr(session, "state"):
+                        session.state["active_agent"] = author
 
-            # Extract text parts
-            event_text = ""
-            if event.content and event.content.parts:
-                for part in event.content.parts:
-                    if part.text:
-                        event_text += part.text
-                        text_response += part.text
+                # Trace agent planning phases (agent.think span representation)
+                if event.content:
+                    with tracer.start_as_current_span("agent.think") as think_span:
+                        think_span.set_attribute("agent.name", author)
+
+                # Extract text parts
+                event_text = ""
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if part.text:
+                            event_text += part.text
+                            text_response += part.text
 
             if event_text:
                 trace_logs.append(
@@ -789,9 +802,12 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                         f"Call ID: {confirmation_fc_id}",
                     )
 
-            # Capture tool executions
+            # Capture tool executions (Pillar 6 & 7)
             if event.get_function_calls():
                 for fc in event.get_function_calls():
+                    with tracer.start_as_current_span("agent.tool") as tool_span:
+                        tool_span.set_attribute("tool.name", fc.name)
+                        tool_span.set_attribute("tool.args", str(fc.args))
                     trace_logs.append(
                         {
                             "author": author,
@@ -802,6 +818,8 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                     )
             if event.get_function_responses():
                 for fr in event.get_function_responses():
+                    with tracer.start_as_current_span("agent.tool_response") as response_span:
+                        response_span.set_attribute("tool.name", fr.name)
                     trace_logs.append(
                         {
                             "author": author,
@@ -862,19 +880,48 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         turns_count = len(chat_history_db[req.session_id])
         user_signals = [msg["text"] for msg in chat_history_db[req.session_id] if msg["is_user"]]
         
-        # Satisfaction rule of thumb: user has not explicitly rejected or corrections are low
-        converged = not was_rejection and not any(kw in (user_signals[-1] if user_signals else "").lower() for kw in ["no", "incorrect", "wrong", "stop"])
-        
+        # GenAI-based Intent Satisfaction Evaluator (Pillar 2 Evaluation Framework)
+        satisfaction_score = 5
+        converged = not was_rejection
+        if req.message and text_response:
+            try:
+                from google.genai import Client
+                # Reuse vertex client setup context if valid API keys exist
+                client = Client()
+                eval_prompt = (
+                    "You are a Quality Assurance Judge evaluating a conversation between a User and a C-Suite Agent team.\n"
+                    f"User Prompt: {req.message}\n"
+                    f"Agent Response: {text_response}\n"
+                    "Evaluate if the Agent addressed the User prompt successfully. Respond strictly in JSON format with two keys:\n"
+                    "- 'converged' (true/false)\n"
+                    "- 'satisfaction_score' (integer between 1 and 5)"
+                )
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=eval_prompt,
+                    config={"response_mime_type": "application/json"}
+                )
+                import json
+                eval_data = json.loads(response.text.strip())
+                converged = eval_data.get("converged", converged)
+                satisfaction_score = eval_data.get("satisfaction_score", satisfaction_score)
+            except Exception as eval_err:
+                print(f"[EVAL ERROR] GenAI Satisfaction Evaluation skipped: {eval_err}", flush=True)
+                # Fallback rule of thumb satisfaction score
+                if any(kw in (user_signals[-1] if user_signals else "").lower() for kw in ["no", "incorrect", "wrong", "stop"]):
+                    satisfaction_score = 2
+                    converged = False
+
         # Estimate token cost roughly
         estimated_token_cost_usd = turns_count * 0.00015
         
         log_action(
             username,
-            f"Evaluation Convergence Metric - Turns: {turns_count}, Converged: {converged}, Cost: ${estimated_token_cost_usd:.5f}",
+            f"Evaluation Convergence Metric - Turns: {turns_count}, Converged: {converged}, Satisfaction: {satisfaction_score}/5, Cost: ${estimated_token_cost_usd:.5f}",
             "Evaluation Engine",
             "Success"
         )
-        print(f"[EVAL] Session ID: {req.session_id} | Turns: {turns_count} | Converged: {converged} | Est. Cost: ${estimated_token_cost_usd:.5f}", flush=True)
+        print(f"[EVAL] Session ID: {req.session_id} | Turns: {turns_count} | Converged: {converged} | Satisfaction: {satisfaction_score}/5 | Est. Cost: ${estimated_token_cost_usd:.5f}", flush=True)
 
         return {
             "response": text_response,
@@ -885,6 +932,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             "evaluation": {
                 "turns_count": turns_count,
                 "converged": converged,
+                "satisfaction_score": satisfaction_score,
                 "estimated_token_cost_usd": estimated_token_cost_usd
             }
         }
