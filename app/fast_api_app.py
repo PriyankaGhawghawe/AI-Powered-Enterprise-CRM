@@ -1135,7 +1135,8 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
 
 @app.post("/api/sql/execute")
 def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_user_token)):
-    if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
+    user_role = token_data.get("role", "Employee")
+    if user_role not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
         
     sql = req.sql.strip()
@@ -1143,6 +1144,15 @@ def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_u
     if not sql.upper().startswith("SELECT"):
         raise HTTPException(status_code=400, detail="Only SELECT statements are allowed for security reasons.")
         
+    # Security restriction: prevent Employees from querying credentials, password hashes, or logs via raw SQL
+    if user_role == "Employee":
+        restricted_tables = ["users", "audit_log", "regulatory_risks", "integration"]
+        if any(table in sql.lower() for table in restricted_tables):
+            raise HTTPException(
+                status_code=403, 
+                detail="Access Denied: Your employee role is restricted from querying system credentials, compliance risks, or audit logging tables."
+            )
+
     from sqlalchemy import text
     db = SessionLocal()
     try:
