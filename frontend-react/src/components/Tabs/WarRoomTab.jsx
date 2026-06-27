@@ -5,7 +5,7 @@ import { FaMoneyBillTrendUp } from 'react-icons/fa6';
 import { FaUserCircle } from 'react-icons/fa';
 
 const WarRoomTab = () => {
-  const { token, addToast } = useContext(AppContext);
+  const { token, addToast, activeRole } = useContext(AppContext);
   const [query, setQuery] = useState('');
   const [isDebating, setIsDebating] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -84,6 +84,20 @@ const WarRoomTab = () => {
     if (agent === 'Synthesizer') return <FaScaleBalanced className="text-purple-500" />;
     return <FaRobot className="text-slate-500" />;
   };
+
+  if (activeRole === 'Employee') {
+    return (
+      <div className="animate-fade-in flex flex-col items-center justify-center h-[calc(100vh-10rem)] p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mb-6">
+          <FaBrain className="text-rose-500 text-3xl" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">Access Denied</h3>
+        <p className="text-slate-600 dark:text-slate-400 max-w-md">
+          The Strategic War Room is restricted to Owners and Managers due to the sensitivity of financial datasets involved in debate generation.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in flex flex-col h-[calc(100vh-10rem)]">

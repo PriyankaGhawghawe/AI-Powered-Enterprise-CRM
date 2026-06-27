@@ -49,9 +49,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           
-          // Role-based visibility check for Employees (cannot see Users, Integrations, Audit Log)
+          // Role-based visibility check for Employees (cannot see Users, Integrations, Audit Log, War Room)
           if (activeRole === 'Employee') {
-            if (['tab-users', 'tab-integrations', 'tab-audit'].includes(tab.id)) {
+            if (['tab-users', 'tab-integrations', 'tab-audit', 'tab-warroom'].includes(tab.id)) {
               return null;
             }
           }

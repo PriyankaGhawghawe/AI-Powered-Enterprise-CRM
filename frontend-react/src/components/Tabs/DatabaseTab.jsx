@@ -3,7 +3,8 @@ import axios from 'axios';
 import { AppContext } from '../../context/AppContext';
 import { 
   FaHandshake, FaCircleCheck, FaCircleNotch, FaXmark, 
-  FaPlus, FaDollarSign, FaClock, FaFire, FaTriangleExclamation
+  FaPlus, FaDollarSign, FaClock, FaFire, FaTriangleExclamation,
+  FaPen
 } from 'react-icons/fa6';
 import { SkeletonLine, SkeletonRectangle } from '../Shared/Skeleton';
 
@@ -18,6 +19,10 @@ const DatabaseTab = () => {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [newDealForm, setNewDealForm] = useState({ name: '', stage: 'Lead', value: 0, probability: 0, owner: '', age_days: 0 });
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDealIndex, setEditingDealIndex] = useState(null);
+  const [editDealForm, setEditDealForm] = useState({ name: '', stage: 'Lead', value: 0, probability: 0, owner: '', age_days: 0 });
 
   useEffect(() => {
     if (businessData) {
@@ -47,20 +52,6 @@ const DatabaseTab = () => {
   const wonValue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
   const criticalDeals = activeDeals.filter(d => d.age_days > 30 && d.value > 10000);
 
-  // Handle Deal modifications
-  const handleDealChange = (index, field, value) => {
-    setDraftData(prev => {
-      const newData = { ...prev };
-      let finalValue = value;
-      if (field === 'value' || field === 'probability' || field === 'age_days') {
-        finalValue = isNaN(value) || value === '' ? value : Number(value);
-      }
-      newData.sales_pipeline.deals[index][field] = finalValue;
-      return newData;
-    });
-    setSaveStatus(null);
-  };
-
   const handleAddDealClick = () => {
     setNewDealForm({ name: '', stage: 'Lead', value: 0, probability: 0, owner: '', age_days: 0 });
     setShowAddModal(true);
@@ -68,28 +59,71 @@ const DatabaseTab = () => {
 
   const submitNewDeal = () => {
     setDraftData(prev => {
-      const newData = { ...prev };
-      if (!newData.sales_pipeline) newData.sales_pipeline = { deals: [] };
-      newData.sales_pipeline.deals.push({
-        id: `DEAL-${Math.floor(Math.random() * 10000)}`,
-        name: newDealForm.name || 'New Deal',
-        value: Number(newDealForm.value) || 0,
-        stage: newDealForm.stage,
-        probability: Number(newDealForm.probability) || 0,
-        owner: newDealForm.owner || 'Unassigned',
-        age_days: Number(newDealForm.age_days) || 0
-      });
-      return newData;
+      const prevDeals = prev.sales_pipeline?.deals || [];
+      return {
+        ...prev,
+        sales_pipeline: {
+          ...prev.sales_pipeline,
+          deals: [
+            ...prevDeals,
+            {
+              id: `DEAL-${Math.floor(Math.random() * 10000)}`,
+              name: newDealForm.name || 'New Deal',
+              value: Number(newDealForm.value) || 0,
+              stage: newDealForm.stage,
+              probability: Number(newDealForm.probability) || 0,
+              owner: newDealForm.owner || 'Unassigned',
+              age_days: Number(newDealForm.age_days) || 0
+            }
+          ]
+        }
+      };
     });
     setShowAddModal(false);
   };
 
-  const handleRemoveDeal = (index) => {
+  const handleEditDealClick = (index) => {
+    setEditingDealIndex(index);
+    setEditDealForm({ ...deals[index] });
+    setShowEditModal(true);
+  };
+
+  const submitEditDeal = () => {
+    if (editingDealIndex === null) return;
     setDraftData(prev => {
-      const newData = { ...prev };
-      newData.sales_pipeline.deals.splice(index, 1);
-      return newData;
+      const prevDeals = prev.sales_pipeline?.deals || [];
+      return {
+        ...prev,
+        sales_pipeline: {
+          ...prev.sales_pipeline,
+          deals: prevDeals.map((deal, i) =>
+            i === editingDealIndex
+              ? {
+                  ...deal,
+                  name: editDealForm.name || 'Deal',
+                  value: Number(editDealForm.value) || 0,
+                  stage: editDealForm.stage,
+                  probability: Number(editDealForm.probability) || 0,
+                  owner: editDealForm.owner || 'Unassigned',
+                  age_days: Number(editDealForm.age_days) || 0
+                }
+              : deal
+          )
+        }
+      };
     });
+    setShowEditModal(false);
+    setEditingDealIndex(null);
+  };
+
+  const handleRemoveDeal = (index) => {
+    setDraftData(prev => ({
+      ...prev,
+      sales_pipeline: {
+        ...prev.sales_pipeline,
+        deals: (prev.sales_pipeline?.deals || []).filter((_, i) => i !== index)
+      }
+    }));
   };
 
   const hasChanges = JSON.stringify(businessData) !== JSON.stringify(draftData);
@@ -223,7 +257,7 @@ const DatabaseTab = () => {
                 <th className="px-6 py-4">Win Prob. (%)</th>
                 <th className="px-6 py-4">Owner</th>
                 <th className="px-6 py-4">Age (Days)</th>
-                {activeRole === 'Owner' && <th className="px-6 py-4 w-16 text-center">Actions</th>}
+                {activeRole === 'Owner' && <th className="px-6 py-4 w-24 text-center">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -236,124 +270,54 @@ const DatabaseTab = () => {
                 <tr key={deal.id || idx} className={`group transition-colors ${isWon ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : isLost ? 'bg-slate-50 dark:bg-slate-800/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                   
                   {/* Name */}
-                  <td className="px-6 py-3">
-                    {activeRole === 'Owner' ? (
-                      <div className="flex items-center gap-2">
-                        {isCritical && <FaFire className="text-rose-500" title="Stalled High-Value Deal" />}
-                        <input
-                          type="text"
-                          value={deal.name || ''}
-                          onChange={(e) => handleDealChange(idx, 'name', e.target.value)}
-                          className="w-full min-w-[150px] bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1.5 transition-all font-medium text-slate-900 dark:text-white"
-                          placeholder="Deal Name"
-                        />
-                      </div>
-                    ) : (
-                      <span className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                        {isCritical && <FaFire className="text-rose-500" />} {deal.name}
-                      </span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                      {isCritical && <FaFire className="text-rose-500" title="Stalled High-Value Deal" />} {deal.name}
+                    </span>
                   </td>
                   
                   {/* Stage */}
-                  <td className="px-6 py-3">
-                    {activeRole === 'Owner' ? (
-                      <div className="relative">
-                        <select 
-                          value={deal.stage}
-                          onChange={(e) => handleDealChange(idx, 'stage', e.target.value)}
-                          className={`w-full appearance-none bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-3 py-1.5 transition-all font-semibold 
-                            ${deal.stage === 'Closed Won' ? 'text-emerald-600 dark:text-emerald-400' : deal.stage === 'Closed Lost' ? 'text-slate-500' : 'text-blue-600 dark:text-blue-400'}`}
-                        >
-                          {stages.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold 
-                        ${deal.stage === 'Closed Won' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' 
-                        : deal.stage === 'Closed Lost' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' 
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'}`}
-                      >
-                        {deal.stage}
-                      </span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold 
+                      ${deal.stage === 'Closed Won' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' 
+                      : deal.stage === 'Closed Lost' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' 
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'}`}
+                    >
+                      {deal.stage}
+                    </span>
                   </td>
                   
                   {/* Value */}
-                  <td className="px-6 py-3">
-                    {activeRole === 'Owner' ? (
-                      <div className="relative">
-                        <span className="absolute left-2 text-slate-400 top-1/2 -translate-y-1/2">$</span>
-                        <input
-                          type="number"
-                          value={deal.value || ''}
-                          onChange={(e) => handleDealChange(idx, 'value', e.target.value)}
-                          className="w-full min-w-[100px] bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded pl-6 pr-2 py-1.5 transition-all font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
-                    ) : (
-                      <span className="font-mono">${(deal.value || 0).toLocaleString()}</span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className="font-mono text-slate-900 dark:text-slate-100">${(deal.value || 0).toLocaleString()}</span>
                   </td>
 
                   {/* Probability */}
-                  <td className="px-6 py-3">
-                     {activeRole === 'Owner' ? (
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0" max="100"
-                          value={deal.probability || ''}
-                          onChange={(e) => handleDealChange(idx, 'probability', e.target.value)}
-                          className="w-20 bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1.5 transition-all font-mono text-right pr-6 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <span className="absolute right-2 text-slate-400 top-1/2 -translate-y-1/2">%</span>
-                      </div>
-                    ) : (
-                      <span className="font-mono">{deal.probability || 0}%</span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className="font-mono text-slate-900 dark:text-slate-100">{deal.probability || 0}%</span>
                   </td>
 
                   {/* Owner */}
-                  <td className="px-6 py-3">
-                    {activeRole === 'Owner' ? (
-                      <input
-                        type="text"
-                        value={deal.owner || ''}
-                        onChange={(e) => handleDealChange(idx, 'owner', e.target.value)}
-                        className="w-full min-w-[120px] bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1.5 transition-all"
-                      />
-                    ) : (
-                      <span>{deal.owner}</span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className="text-slate-900 dark:text-slate-100">{deal.owner}</span>
                   </td>
 
                   {/* Age */}
-                  <td className="px-6 py-3">
-                    {activeRole === 'Owner' ? (
-                      <div className="flex items-center gap-2 text-slate-500">
-                        <FaClock />
-                        <input
-                          type="number"
-                          value={deal.age_days || ''}
-                          onChange={(e) => handleDealChange(idx, 'age_days', e.target.value)}
-                          className="w-16 bg-transparent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1.5 transition-all font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
-                    ) : (
-                      <span className="flex items-center gap-2 text-slate-500"><FaClock /> {deal.age_days}d</span>
-                    )}
+                  <td className="px-6 py-4">
+                    <span className="flex items-center gap-2 text-slate-500"><FaClock /> {deal.age_days}d</span>
                   </td>
                   
                   {/* Actions */}
                   {activeRole === 'Owner' && (
-                    <td className="px-6 py-3 text-center">
-                      <button onClick={() => setDealToDelete(idx)} className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Delete Deal">
-                        <FaXmark />
-                      </button>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleEditDealClick(idx)} className="text-slate-400 hover:text-blue-500 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" title="Edit Deal">
+                          <FaPen className="text-xs" />
+                        </button>
+                        <button onClick={() => setDealToDelete(idx)} className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title="Delete Deal">
+                          <FaXmark />
+                        </button>
+                      </div>
                     </td>
                   )}
                   
@@ -462,6 +426,11 @@ const DatabaseTab = () => {
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Win Prob (%)</label>
                   <input type="number" value={newDealForm.probability} onChange={e => setNewDealForm({...newDealForm, probability: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Age (Days)</label>
+                  <input type="number" value={newDealForm.age_days} onChange={e => setNewDealForm({...newDealForm, age_days: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
               </div>
             </div>
 
@@ -471,6 +440,64 @@ const DatabaseTab = () => {
               </button>
               <button onClick={submitNewDeal} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow-md transition-colors flex items-center gap-2 font-sans">
                 <FaPlus /> Add Deal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Deal Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowEditModal(false)} />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg relative z-10 overflow-hidden border border-slate-200 dark:border-slate-700 animate-slide-up">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Edit Deal Details</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Modify the deal properties below.</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Name</label>
+                  <input type="text" value={editDealForm.name} onChange={e => setEditDealForm({...editDealForm, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Stage</label>
+                  <select value={editDealForm.stage} onChange={e => setEditDealForm({...editDealForm, stage: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    {stages.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Owner</label>
+                  <input type="text" value={editDealForm.owner} onChange={e => setEditDealForm({...editDealForm, owner: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Value ($)</label>
+                  <input type="number" value={editDealForm.value} onChange={e => setEditDealForm({...editDealForm, value: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Win Prob (%)</label>
+                  <input type="number" value={editDealForm.probability} onChange={e => setEditDealForm({...editDealForm, probability: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Age (Days)</label>
+                  <input type="number" value={editDealForm.age_days} onChange={e => setEditDealForm({...editDealForm, age_days: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+              <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors font-sans">
+                Cancel
+              </button>
+              <button onClick={submitEditDeal} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg shadow-md transition-colors flex items-center gap-2 font-sans">
+                <FaCircleCheck /> Save Changes
               </button>
             </div>
           </div>

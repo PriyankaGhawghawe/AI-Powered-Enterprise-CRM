@@ -187,9 +187,9 @@ def run_weekly_report_sync():
             f.write(traceback.format_exc() + "\n")
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_weekly_report_sync, 'interval', minutes=1)
+scheduler.add_job(run_weekly_report_sync, 'cron', hour=9, minute=0)
 scheduler.start()
-print("CRON: BackgroundScheduler started. Background jobs will run every minute.")
+print("CRON: BackgroundScheduler started. Daily report job will run at 9:00 AM.")
 
 app.description = "API for interacting with the Agent business-os"
 
