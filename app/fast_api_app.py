@@ -1574,6 +1574,12 @@ if os.path.exists(frontend_path):
         app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
     # Serve the React SPA index for specific routes
+    from fastapi.responses import RedirectResponse
+
+    @app.get("/")
+    def root_redirect():
+        return RedirectResponse(url="/login")
+
     @app.get("/login")
     @app.get("/reset-password")
     @app.get("/dashboard")
