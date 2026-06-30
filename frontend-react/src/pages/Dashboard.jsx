@@ -78,7 +78,7 @@ const Dashboard = () => {
   const renderTabContent = () => {
     if (!isDataLoaded) {
       return (
-        <div className="animate-pulse bg-slate-800 h-[400px] rounded-2xl w-full border border-slate-700 shadow-sm"></div>
+        <div className="animate-pulse bg-slate-200 dark:bg-slate-800 h-[400px] rounded-2xl w-full border border-slate-300 dark:border-slate-700 shadow-sm"></div>
       );
     }
     
