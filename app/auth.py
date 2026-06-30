@@ -1,9 +1,11 @@
-import os
 import datetime
+import os
+
 import jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from passlib.context import CryptContext
+
 from app.database import SessionLocal
 from app.models import User
 
@@ -51,7 +53,7 @@ def get_current_user_token(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password reset required. Please reset your password before accessing this API."
         )
-        
+
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == payload.get("sub")).first()
@@ -62,7 +64,7 @@ def get_current_user_token(token: str = Depends(oauth2_scheme)):
             )
     finally:
         db.close()
-        
+
     return payload
 
 def get_token_for_reset(token: str = Depends(oauth2_scheme)):

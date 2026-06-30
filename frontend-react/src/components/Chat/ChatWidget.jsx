@@ -13,6 +13,8 @@ const ChatWidget = () => {
   const [viewMode, setViewMode] = useState('chat'); // 'chat' or 'bookmarks'
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [importedIndex, setImportedIndex] = useState(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState(null);
+  const [mfaCode, setMfaCode] = useState('');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -57,6 +59,16 @@ const ChatWidget = () => {
       
       const data = await res.json();
       
+      if (data.needs_confirmation) {
+        setPendingConfirmation({
+          sessionId: data.session_id,
+          hint: data.confirmation_hint,
+          fcId: data.confirmation_fc_id
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       let responseText = data.response;
       // Some LLMs wrap tables in ```markdown code blocks. This unwraps them so marked parses them as actual tables.
       responseText = responseText.replace(/```(?:markdown|md)?\n([\s\S]*?)\n```/g, (match, p1) => {
@@ -74,6 +86,50 @@ const ChatWidget = () => {
     } catch (e) {
       console.error(e);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', contentHtml: '<p class="text-rose-500">Error connecting to executive AI.</p>' }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmAction = async (e, isApproved) => {
+    if (e) e.preventDefault();
+    if (isApproved && !mfaCode.trim() || !pendingConfirmation) return;
+    
+    setIsLoading(true);
+    const currentSession = pendingConfirmation.sessionId;
+    const currentFcId = pendingConfirmation.fcId;
+    setPendingConfirmation(null);
+    setMfaCode('');
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          role: activeRole, 
+          session_id: currentSession,
+          confirmation: { id: currentFcId, confirmed: isApproved },
+          mfa_code: isApproved ? mfaCode : null 
+        })
+      });
+      
+      const data = await res.json();
+      
+      let responseText = data.response || "Action executed successfully.";
+      const cleanHtml = DOMPurify.sanitize(marked.parse(responseText));
+      
+      setMessages(prev => [...prev, { 
+        id: (Date.now() + 1).toString(), 
+        role: 'assistant', 
+        contentHtml: cleanHtml, 
+        rawContent: responseText 
+      }]);
+    } catch (e) {
+      console.error(e);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', contentHtml: '<p class="text-rose-500">MFA Validation Error.</p>' }]);
     } finally {
       setIsLoading(false);
     }
@@ -224,6 +280,38 @@ const ChatWidget = () => {
                 </div>
               </div>
             ))}
+            
+            {pendingConfirmation && (
+              <div className="flex gap-4 flex-row">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400">
+                  <FaTriangleExclamation size={16} />
+                </div>
+                <div className="flex flex-col gap-1.5 max-w-[85%]">
+                  <div className="p-4 rounded-2xl text-sm shadow-sm bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800/50 rounded-tl-none">
+                    <h4 className="font-bold text-orange-800 dark:text-orange-400 mb-2">High-Stakes Action (MFA Required)</h4>
+                    <p className="text-orange-700 dark:text-orange-300 mb-4 font-medium"><strong>Vibe Diff:</strong> {pendingConfirmation.hint}</p>
+                    <form onSubmit={(e) => handleConfirmAction(e, true)} className="flex flex-col gap-3">
+                      <input 
+                        type="text" 
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value)}
+                        placeholder="Enter TOTP Code (e.g., 123456)"
+                        className="w-full p-2 border border-orange-300 dark:border-orange-700 bg-white dark:bg-slate-800 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <button type="submit" className="flex-1 bg-orange-600 hover:bg-orange-500 text-white py-2 rounded font-bold transition-colors">
+                          Approve via MFA
+                        </button>
+                        <button type="button" onClick={(e) => handleConfirmAction(e, false)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded transition-colors font-semibold">
+                          Reject
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
           
           {isLoading && (
             <div className="flex gap-4">

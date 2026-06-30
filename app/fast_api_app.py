@@ -11,15 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import os
-import asyncio
+
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
+import datetime
+
 import google.auth
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
@@ -27,55 +30,23 @@ from pydantic import BaseModel
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+from app.auth import (
+    create_access_token,
+    get_current_user_token,
+    get_password_hash,
+    get_token_for_reset,
+    verify_password,
+)
+from app.database import Base, SessionLocal, engine
+from app.encryption import decrypt_data, encrypt_data
+from app.models import AuditLog, Integration, User
 from app.utils.audit import get_audit_logs, log_action
 from app.utils.pii import mask_pii
-from app.database import engine, Base, SessionLocal
-from app import models
-from app.models import User, AuditLog, Integration
-from app.auth import get_password_hash, verify_password, create_access_token, get_current_user_token, get_token_for_reset
-from app.encryption import encrypt_data, decrypt_data
-from fastapi import Depends, HTTPException, status
-import datetime
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
-def seed_normalized_db(db):
-    from app.models import SalesDeal, Competitor, HistoricalPerformance, RegulatoryRisk, ComplianceChecklist, BusinessMetric
-    from app.mock_data import DEFAULT_BUSINESS_DATA
 
-    if db.query(BusinessMetric).first() is None:
-        # Seed Metrics
-        for key, value in DEFAULT_BUSINESS_DATA["financials"].items():
-            if not isinstance(value, dict) and not isinstance(value, list):
-                db.add(BusinessMetric(key=f"financials.{key}", value=str(value)))
-        
-        for key, value in DEFAULT_BUSINESS_DATA["financials"].get("expenses", {}).items():
-            db.add(BusinessMetric(key=f"financials.expenses.{key}", value=str(value)))
-        db.add(BusinessMetric(key="company_name", value=DEFAULT_BUSINESS_DATA["company_name"]))
-        db.add(BusinessMetric(key="industry", value=DEFAULT_BUSINESS_DATA["industry"]))
-        
-        # Seed Deals
-        for deal in DEFAULT_BUSINESS_DATA["sales_pipeline"]["deals"]:
-            db.add(SalesDeal(**deal))
-        
-        # Seed Competitors
-        for comp in DEFAULT_BUSINESS_DATA["market_intelligence"]["competitors"]:
-            db.add(Competitor(**comp))
-
-        # Seed Historical Performance
-        for hp in DEFAULT_BUSINESS_DATA["financials"]["historical_performance"]:
-            db.add(HistoricalPerformance(**hp))
-        
-        # Seed Risks
-        for risk in DEFAULT_BUSINESS_DATA["compliance"]["regulatory_risks"]:
-            db.add(RegulatoryRisk(**risk))
-
-        # Seed Checklist
-        for item in DEFAULT_BUSINESS_DATA["compliance"]["checklist"]:
-            db.add(ComplianceChecklist(**item))
-
-        db.commit()
 
 def init_db_data():
     db = SessionLocal()
@@ -86,16 +57,16 @@ def init_db_data():
             db.add(User(username="manager", password_hash=get_password_hash("manager"), role="Manager", requires_password_reset=False))
         if not db.query(User).filter(User.username == "employee").first():
             db.add(User(username="employee", password_hash=get_password_hash("employee"), role="Employee", requires_password_reset=False))
-        
+
 
         # Seed Integrations
         default_integrations = ['Stripe', 'Salesforce', 'Jira', 'Slack', 'HubSpot']
         for name in default_integrations:
             if not db.query(Integration).filter(Integration.name == name).first():
                 db.add(Integration(name=name, status='disconnected'))
-        
+
         db.commit()
-        seed_normalized_db(db)
+
     finally:
         db.close()
 
@@ -132,17 +103,17 @@ app: FastAPI = get_fast_api_app(
 app.title = "business-os"
 
 # === CRON JOB SETUP ===
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 async def run_weekly_report():
     print("CRON: Triggered weekly report generation...")
-    from app.agent import app as adk_app
     from google.adk.runners import InMemoryRunner
+
+    from app.agent import app as adk_app
     runner = InMemoryRunner(app=adk_app)
-    
+
     # We give the cron job Owner role so it has permission to generate reports
-    state_delta = {"user_role": "Owner"} 
-    
+    state_delta = {"user_role": "Owner"}
+
     try:
         # We ask the CEO to draft a report and save it to the filesystem.
         # This will test the write_document tool automatically in the background.
@@ -151,7 +122,7 @@ async def run_weekly_report():
             role="user",
             parts=[types.Part.from_text(text="You are running as an automated background cron job. Please read the financial summary and sales pipeline, and write a concise weekly executive summary document. Save it using the write_document tool as 'weekly_cron_summary.md'. Keep it under 100 words.")]
         )
-        
+
         session = await runner.session_service.get_session(
             app_name=adk_app.name, user_id="cron-bot", session_id="cron-weekly"
         )
@@ -172,16 +143,15 @@ async def run_weekly_report():
         print(f"CRON: Error running background agent: {e}")
 
 from apscheduler.schedulers.background import BackgroundScheduler
-import asyncio
+
 
 def run_weekly_report_sync():
     try:
         import traceback
-        import os
         with open("cron_debug.log", "a") as f:
             f.write("Running cron sync wrapper\n")
         asyncio.run(run_weekly_report())
-    except Exception as e:
+    except Exception:
         import traceback
         with open("cron_debug.log", "a") as f:
             f.write(traceback.format_exc() + "\n")
@@ -202,6 +172,7 @@ class ChatRequest(BaseModel):
     user_id: str = "default_user"
     confirmation: dict | None = None
     simulated_db: dict | None = None
+    mfa_code: str | None = None
 
 
 class DataUpdateRequest(BaseModel):
@@ -225,18 +196,18 @@ def login(req: LoginRequest):
         if not user or not verify_password(req.password, user.password_hash):
             log_action(req.username, "Failed login attempt", "System", "Denied")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
-        
+
         access_token = create_access_token(data={
-            "sub": user.username, 
-            "role": user.role, 
+            "sub": user.username,
+            "role": user.role,
             "requires_password_reset": user.requires_password_reset,
             "token_version": user.token_version
         })
         log_action(user.username, "Successful login", "System", "Success")
         return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "role": user.role, 
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": user.role,
             "username": user.username,
             "requires_password_reset": user.requires_password_reset
         }
@@ -254,23 +225,23 @@ def reset_password(req: ResetPasswordRequest, token_data: dict = Depends(get_tok
         user = db.query(User).filter(User.username == username).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-            
+
         user.password_hash = get_password_hash(req.new_password)
         user.requires_password_reset = False
         user.token_version += 1
         db.commit()
         log_action(user.username, "User reset their own password", "System", "Success")
-        
+
         access_token = create_access_token(data={
-            "sub": user.username, 
-            "role": user.role, 
+            "sub": user.username,
+            "role": user.role,
             "requires_password_reset": False,
             "token_version": user.token_version
         })
         return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "role": user.role, 
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": user.role,
             "username": user.username,
             "requires_password_reset": False
         }
@@ -459,7 +430,7 @@ def sync_integration(name: str, token_data: dict = Depends(get_current_user_toke
             raise HTTPException(status_code=404, detail="Integration not found")
         if integration.status != "connected":
             raise HTTPException(status_code=400, detail="Integration must be configured first")
-        
+
         # Simulate syncing logic using decrypted key
         _plaintext_key = decrypt_data(integration.api_key) if integration.api_key else None
         integration.last_synced_at = datetime.datetime.utcnow()
@@ -470,11 +441,18 @@ def sync_integration(name: str, token_data: dict = Depends(get_current_user_toke
 @app.get("/api/data")
 def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dict:
     """Fetch the current editable business database state from normalized tables."""
-    from app.models import SalesDeal, Competitor, HistoricalPerformance, RegulatoryRisk, ComplianceChecklist, BusinessMetric, AuditLog
+    from app.models import (
+        BusinessMetric,
+        Competitor,
+        ComplianceChecklist,
+        HistoricalPerformance,
+        RegulatoryRisk,
+        SalesDeal,
+    )
     db = SessionLocal()
     try:
         metrics = {m.key: m.value for m in db.query(BusinessMetric).all()}
-        
+
         financials = {"expenses": {}}
         for key, val in metrics.items():
             if key.startswith("financials.expenses."):
@@ -503,7 +481,7 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
         competitors = []
         for c in db.query(Competitor).all():
             competitors.append({"name": c.name, "market_share": c.market_share, "pricing": c.pricing, "strengths": c.strengths, "weaknesses": c.weaknesses})
-        
+
         risks = []
         for r in db.query(RegulatoryRisk).all():
             risks.append({"risk_area": r.risk_area, "description": r.description, "severity": r.severity, "mitigation": r.mitigation or ""})
@@ -541,8 +519,15 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
     """Overwrite the current business database state with updated edits."""
     if token_data.get("role") != "Owner":
         raise HTTPException(status_code=403, detail="Not authorized")
-    
-    from app.models import SalesDeal, Competitor, HistoricalPerformance, RegulatoryRisk, ComplianceChecklist, BusinessMetric
+
+    from app.models import (
+        BusinessMetric,
+        Competitor,
+        ComplianceChecklist,
+        HistoricalPerformance,
+        RegulatoryRisk,
+        SalesDeal,
+    )
     db = SessionLocal()
     try:
         # We wipe and recreate the tables to simulate the "save JSON" behavior for simplicity
@@ -562,14 +547,14 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
             if "expenses" in data["financials"]:
                 for k, v in data["financials"]["expenses"].items():
                     db.add(BusinessMetric(key=f"financials.expenses.{k}", value=str(v)))
-        
+
         db.add(BusinessMetric(key="company_name", value=data.get("company_name", "")))
         db.add(BusinessMetric(key="industry", value=data.get("industry", "")))
-        
+
         if "sales_pipeline" in data and "deals" in data["sales_pipeline"]:
             for d in data["sales_pipeline"]["deals"]:
                 db.add(SalesDeal(**d))
-        
+
         if "market_intelligence" in data and "competitors" in data["market_intelligence"]:
             for c in data["market_intelligence"]["competitors"]:
                 db.add(Competitor(**c))
@@ -577,7 +562,7 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
         if "financials" in data and "historical_performance" in data["financials"]:
             for hp in data["financials"]["historical_performance"]:
                 db.add(HistoricalPerformance(**hp))
-        
+
         if "compliance" in data:
             if "regulatory_risks" in data["compliance"]:
                 for r in data["compliance"]["regulatory_risks"]:
@@ -585,11 +570,11 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
             if "checklist" in data["compliance"]:
                 for c in data["compliance"]["checklist"]:
                     db.add(ComplianceChecklist(**c))
-        
+
         db.commit()
     finally:
         db.close()
-    
+
     log_action(token_data.get("role"), "Updated business database variables natively", token_data.get("sub"), "Success")
     return {"status": "success", "message": "Database updated successfully."}
 
@@ -639,11 +624,11 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
     new_message = None
     if masked_message:
         directive = ROLE_DIRECTIVES.get(user_role) or ""
-            
+
         # Override req user and role with verified token data
         user_id = username
         req.role = user_role
-        
+
         # Scenario Mode injection
         scenario_context = ""
         if getattr(req, 'simulated_db', None):
@@ -655,16 +640,25 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                 f"```json\n{json.dumps(req.simulated_db, indent=2)}\n```\n"
                 "Please analyze the situation based *only* on this hypothetical scenario data.\n"
             )
-            
+
         full_message = (directive + scenario_context + "\nUser message: " + masked_message) if (directive or scenario_context) else masked_message
-        
+
         new_message = types.Content(
             role="user", parts=[types.Part.from_text(text=full_message)]
         )
     elif req.confirmation:
         fc_id = req.confirmation.get("id")
         confirmed = req.confirmation.get("confirmed", False)
-        status_str = "Approved" if confirmed else "Rejected"
+
+        # simulated MFA validation check
+        if confirmed and req.mfa_code != "123456":
+            return {
+                "response": "⛔ **MFA Validation Failed.** The TOTP code provided was incorrect. Action aborted.",
+                "trace": [{"author": "System", "type": "error", "text": "MFA Failed"}],
+                "needs_confirmation": False
+            }
+
+        status_str = "Approved (MFA Validated)" if confirmed else "Rejected"
         was_rejection = not confirmed
         log_action(
             req.role,
@@ -732,7 +726,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         with tracer.start_as_current_span("agent.session") as session_span:
             session_span.set_attribute("session_id", req.session_id)
             session_span.set_attribute("user_role", req.role)
-            
+
             async for event in runner.run_async(
                 user_id=req.user_id,
                 session_id=req.session_id,
@@ -790,7 +784,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                             if wrapper_fc_id:
                                 break
                     confirmation_fc_id = wrapper_fc_id or fc_id
-                    
+
                     trace_logs.append(
                         {
                             "author": author,
@@ -810,6 +804,16 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             # Capture tool executions (Pillar 6 & 7)
             if event.get_function_calls():
                 for fc in event.get_function_calls():
+                    # --- ABA Hook (Pillar 6) ---
+                    from app.security.agent_behavioural_analytics import aba_engine
+                    if aba_engine.record_tool_call(req.session_id, fc.name):
+                        log_action(req.role, f"ABA Quarantine Triggered for {req.session_id} due to volume of calls", "Security System", "Quarantined")
+                        return {
+                            "response": "⛔ **SECURITY QUARANTINE ACTIVE.** Agent Behavioural Analytics (ABA) has detected an abnormal volume of tool executions. The active session has been locked to prevent potential prompt injection or runaway hallucination loops.",
+                            "trace": [{"author": "Security System", "type": "error", "text": "Stateful Quarantine triggered due to rate limit violation."}],
+                            "needs_confirmation": False
+                        }
+                    # ---------------------------
                     with tracer.start_as_current_span("agent.tool") as tool_span:
                         tool_span.set_attribute("tool.name", fc.name)
                         tool_span.set_attribute("tool.args", str(fc.args))
@@ -884,7 +888,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         # Calculate and Log Session Convergence Metrics (Evaluation Quality Flywheel)
         turns_count = len(chat_history_db[req.session_id])
         user_signals = [msg["text"] for msg in chat_history_db[req.session_id] if msg["is_user"]]
-        
+
         # GenAI-based Intent Satisfaction Evaluator (Pillar 2 Evaluation Framework)
         satisfaction_score = 5
         converged = not was_rejection
@@ -917,9 +921,28 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                     satisfaction_score = 2
                     converged = False
 
+        # --- Quality Flywheel Sink (Online Evaluation) ---
+        if satisfaction_score <= 2:
+            try:
+                import json
+                import time
+                with open("failed_traces.jsonl", "a", encoding="utf-8") as f:
+                    failure_record = {
+                        "session_id": req.session_id,
+                        "timestamp": time.time(),
+                        "user_correction": user_signals[-1] if user_signals else req.message,
+                        "agent_response": text_response,
+                        "trace": trace_logs,
+                        "satisfaction_score": satisfaction_score
+                    }
+                    f.write(json.dumps(failure_record) + "\n")
+            except Exception as e:
+                print(f"[EVAL ERROR] Could not persist failed trace: {e}", flush=True)
+        # -------------------------------------------------
+
         # Estimate token cost roughly
         estimated_token_cost_usd = turns_count * 0.00015
-        
+
         log_action(
             username,
             f"Evaluation Convergence Metric - Turns: {turns_count}, Converged: {converged}, Satisfaction: {satisfaction_score}/5, Cost: ${estimated_token_cost_usd:.5f}",
@@ -953,11 +976,12 @@ class ChartPinRequest(BaseModel):
 def pin_chart(req: ChartPinRequest, token_data: dict = Depends(get_current_user_token)):
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
-    from app.models import PinnedChart
-    import uuid
+
     import datetime
-    
+    import uuid
+
+    from app.models import PinnedChart
+
     db = SessionLocal()
     try:
         new_chart_id = str(uuid.uuid4())
@@ -974,7 +998,7 @@ def pin_chart(req: ChartPinRequest, token_data: dict = Depends(get_current_user_
         db.add(new_chart)
         db.commit()
         return {
-            "status": "success", 
+            "status": "success",
             "chart": {
                 "id": new_chart_id,
                 "title": req.title,
@@ -1020,16 +1044,17 @@ class SQLExecuteRequest(BaseModel):
 async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_current_user_token)):
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    import google.generativeai as genai
     import os
-    
+
+    import google.generativeai as genai
+
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-    
+
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash')
-    
+
     schema_prompt = """
     You are an expert SQL assistant for BusinessOS. You will generate valid SQLite queries based on the user's natural language request.
     
@@ -1049,7 +1074,7 @@ async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_c
     
     Return ONLY the raw SQL query string without any markdown formatting, backticks, or explanation. Ensure it is a read-only SELECT statement.
     """
-    
+
     try:
         response = await model.generate_content_async([schema_prompt, f"User Request: {req.query}"])
         sql_query = response.text.strip().strip('`').strip('sql').strip()
@@ -1076,21 +1101,22 @@ class SQLVisualizeRequest(BaseModel):
 async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get_current_user_token)):
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     if not req.columns or not req.rows:
         return {"chartType": "Bar", "xAxisKey": "", "yAxisKey": ""}
 
-    import google.generativeai as genai
-    import os
     import json
-    
+    import os
+
+    import google.generativeai as genai
+
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-    
+
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash')
-    
+
     prompt = f"""
     You are a data visualization expert. I will provide you with the columns and a sample of rows from a SQL query result.
     Your task is to determine the BEST chart type (either "Bar" or "Line"), which column should be the X-axis, and which column should be the Y-axis.
@@ -1098,16 +1124,20 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
     Columns: {req.columns}
     Sample Data (first 3 rows): {req.rows[:3]}
     
-    Return the response strictly in JSON format matching exactly this schema:
+    Return the response strictly in JSON format matching exactly this A2UI schema:
     {{
-        "chartType": "Bar" or "Line",
-        "xAxisKey": "string (one of the columns)",
-        "yAxisKey": "string (one of the columns)"
+        "type": "a2ui",
+        "component": "Chart",
+        "props": {{
+            "chartType": "Bar", "Line", "Pie", "Doughnut", "Radar", or "PolarArea",
+            "xAxisKey": "string (one of the columns)",
+            "yAxisKey": "string (one of the columns)"
+        }}
     }}
     
     Do NOT wrap in markdown blocks, just return raw JSON.
     """
-    
+
     try:
         response = await model.generate_content_async(prompt)
         text = response.text.strip()
@@ -1115,7 +1145,7 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
             text = text[7:-3].strip()
         elif text.startswith("```"):
             text = text[3:-3].strip()
-            
+
         config = json.loads(text)
         return config
     except Exception as e:
@@ -1130,7 +1160,7 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
             else:
                 friendly_msg = "Gemini AI Quota Exceeded. You have reached the free tier limit. Please try again in a few moments or upgrade your API plan."
             raise HTTPException(status_code=429, detail=friendly_msg)
-            
+
         # Fallback to simple logic if AI fails for non-quota reasons
         return {
             "chartType": "Bar",
@@ -1143,33 +1173,27 @@ def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_u
     user_role = token_data.get("role", "Employee")
     if user_role not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     sql = req.sql.strip()
     # Basic security check to prevent modifications
     if not sql.upper().startswith("SELECT"):
         raise HTTPException(status_code=400, detail="Only SELECT statements are allowed for security reasons.")
-        
+
     # Security restriction: prevent Employees from querying credentials, password hashes, or logs via raw SQL
     if user_role == "Employee":
         restricted_tables = ["users", "audit_log", "regulatory_risks", "integration"]
         if any(table in sql.lower() for table in restricted_tables):
             raise HTTPException(
-                status_code=403, 
+                status_code=403,
                 detail="Access Denied: Your employee role is restricted from querying system credentials, compliance risks, or audit logging tables."
             )
 
-    from sqlalchemy import text
-    db = SessionLocal()
+    from app.sandbox_runtime import execute_sql_sandboxed
     try:
-        result = db.execute(text(sql))
-        # Convert rows to a list of dicts
-        columns = result.keys()
-        rows = [dict(zip(columns, row)) for row in result.fetchall()]
-        return {"columns": list(columns), "rows": rows}
+        result = execute_sql_sandboxed(sql)
+        return result
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"SQL Execution Error: {str(e)}")
-    finally:
-        db.close()
+        raise HTTPException(status_code=400, detail=f"SQL Execution Error: {e!s}")
 
 class WarRoomRequest(BaseModel):
     query: str
@@ -1182,43 +1206,44 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
             status_code=403,
             detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity."
         )
-    from fastapi.responses import StreamingResponse
-    import google.generativeai as genai
     import json
-    
+
+    import google.generativeai as genai
+    from fastapi.responses import StreamingResponse
+
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-    
+
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash')
-    
+
     async def generate_debate():
         yield f"data: {json.dumps({'agent': 'system', 'content': 'Starting War Room Session...'})}\n\n"
         await asyncio.sleep(1)
-        
+
         # Financial Analyst
         yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': 'Analyzing financial implications...'})}\n\n"
         try:
             fin_response = await model.generate_content_async(f"You are a strict Financial Analyst. The user asks: {req.query}. Give a concise 2-sentence financial perspective.")
             yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': fin_response.text.strip()})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': f'Error analyzing data: {repr(e)}'})}\n\n"
+            yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': f'Error analyzing data: {e!r}'})}\n\n"
             fin_response = None
-            
+
         await asyncio.sleep(1)
-        
+
         # VP of Sales
         yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': 'Reviewing sales pipeline impact...'})}\n\n"
         try:
             sales_response = await model.generate_content_async(f"You are an aggressive VP of Sales. The user asks: {req.query}. Give a concise 2-sentence sales perspective.")
             yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': sales_response.text.strip()})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': f'Error analyzing data: {repr(e)}'})}\n\n"
+            yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': f'Error analyzing data: {e!r}'})}\n\n"
             sales_response = None
 
         await asyncio.sleep(1)
-            
+
         # Synthesizer
         yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': 'Synthesizing final executive summary...'})}\n\n"
         try:
@@ -1227,8 +1252,8 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
             synth_response = await model.generate_content_async(f"Synthesize these perspectives into a final 2-sentence executive summary. Financial: {fin_text}, Sales: {sales_text}. User Query: {req.query}")
             yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': synth_response.text.strip()})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': f'Error: {repr(e)}'})}\n\n"
-            
+            yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': f'Error: {e!r}'})}\n\n"
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate_debate(), media_type="text/event-stream")
@@ -1251,9 +1276,10 @@ def disconnect_integration(name: str, token_data: dict = Depends(get_current_use
 
 @app.post("/api/integrations/sync/{integration_name}")
 async def mcp_sync_integration(integration_name: str, token_data: dict = Depends(get_current_user_token)):
-    from fastapi.responses import StreamingResponse
     import json
-    
+
+    from fastapi.responses import StreamingResponse
+
     db = SessionLocal()
     try:
         integration = db.query(Integration).filter(Integration.name == integration_name).first()
@@ -1266,18 +1292,18 @@ async def mcp_sync_integration(integration_name: str, token_data: dict = Depends
     async def generate_sync_logs():
         logs = [
             f"[MCP] Initializing context for {integration_name}...",
-            f"[MCP] Resolving connection protocol...",
+            "[MCP] Resolving connection protocol...",
             f"[{integration_name}] Authenticating via OAuth2...",
             f"[{integration_name}] Connection established securely.",
             f"[{integration_name}] Fetching records from endpoints...",
             f"[{integration_name}] Processing 450 records...",
-            f"[MCP] Sync complete! Updating local database..."
+            "[MCP] Sync complete! Updating local database..."
         ]
         for log in logs:
             yield f"data: {json.dumps({'log': log})}\n\n"
             await asyncio.sleep(0.8)
         yield "data: [DONE]\n\n"
-    
+
     return StreamingResponse(generate_sync_logs(), media_type="text/event-stream")
 
 
@@ -1285,7 +1311,7 @@ async def mcp_sync_integration(integration_name: str, token_data: dict = Depends
 frontend_path = os.path.join(AGENT_DIR, "frontend-react", "dist")
 if os.path.exists(frontend_path):
     from fastapi.responses import FileResponse
-    
+
     # Mount the Vite built assets directory
     assets_path = os.path.join(frontend_path, "assets")
     if os.path.exists(assets_path):
@@ -1302,20 +1328,20 @@ if os.path.exists(frontend_path):
 # Feature 2: Outbox
 @app.get("/api/outbox")
 async def get_outbox(token_data: dict = Depends(get_current_user_token)):
-    import os
     import glob
+    import os
     from datetime import datetime
-    
+
     outbox_dir = os.path.join(os.path.dirname(__file__), "outbox")
     if not os.path.exists(outbox_dir):
         return []
-        
+
     files = []
     for fp in glob.glob(os.path.join(outbox_dir, "*.md")):
-        with open(fp, "r") as f:
+        with open(fp) as f:
             content = f.read()
         mtime = os.path.getmtime(fp)
-        
+
         # Basic parsing
         subject_line = "Agent Report"
         to_line = "Executive Team"
@@ -1324,7 +1350,7 @@ async def get_outbox(token_data: dict = Depends(get_current_user_token)):
                 subject_line = line.replace("Subject:", "").strip()
             elif line.startswith("To:"):
                 to_line = line.replace("To:", "").strip()
-                
+
         files.append({
             "filename": os.path.basename(fp),
             "content": content,
@@ -1353,10 +1379,10 @@ async def get_analytics():
     import os
     import random
     from datetime import datetime, timedelta
-    
+
     db_path = os.path.join(os.path.dirname(__file__), "business_data.json")
     try:
-        with open(db_path, "r") as f:
+        with open(db_path) as f:
             db = json.load(f)
     except FileNotFoundError:
         from fastapi import HTTPException
@@ -1364,20 +1390,20 @@ async def get_analytics():
 
     current_cash = db.get("financials", {}).get("cash_balance", 0)
     current_mrr = db.get("financials", {}).get("monthly_mrr", 0)
-    
+
     data = {"months": [], "cash_flow": [], "mrr": [], "pipeline_value": []}
-    
+
     # Generate 12 months backward from current live data
     # We simulate that the company grew over the past year to reach the CURRENT state
     # So we step backward and reduce the numbers
-    
+
     cash_step = current_cash
     mrr_step = current_mrr
-    
+
     for i in range(11, -1, -1):
         month_date = datetime.now() - timedelta(days=30*i)
         data["months"].append(month_date.strftime("%b %Y"))
-        
+
         # Current month is the live data
         if i == 0:
             data["cash_flow"].append(current_cash)
@@ -1388,11 +1414,11 @@ async def get_analytics():
             # Randomly subtract growth for historical months
             mrr_step -= random.randint(1000, 5000)
             cash_step += random.randint(10000, 40000) # cash goes up when looking back if we were burning
-            
+
             data["cash_flow"].append(max(0, cash_step))
             data["mrr"].append(max(0, mrr_step))
             data["pipeline_value"].append(max(0, mrr_step * random.uniform(2.5, 3.5)))
-            
+
     return {"status": "success", "data": data}
 
 @app.post("/feedback")
@@ -1411,8 +1437,10 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-from fastapi.responses import JSONResponse
 import traceback
+
+from fastapi.responses import JSONResponse
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

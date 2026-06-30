@@ -1,0 +1,12 @@
+[
+  {
+    "case_id": "market_competitors_001",
+    "input": "Who are our main competitors?",
+    "expected_skill": "market-intelligence",
+    "expected_tool_calls": [
+      {"tool": "get_market_intelligence", "args": {}}
+    ],
+    "expected_output_format": "competitor_list",
+    "rubric": ["lists competitors", "mentions strengths and weaknesses"]
+  }
+]

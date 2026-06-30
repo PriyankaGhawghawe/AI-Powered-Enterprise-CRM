@@ -1,7 +1,8 @@
-import os
 import base64
 import hashlib
+
 from cryptography.fernet import Fernet
+
 from app.auth import SECRET_KEY
 
 # Derive a 32-byte url-safe base64 key from the SECRET_KEY

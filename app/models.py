@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, JSON, String, DateTime, Boolean
-from app.database import Base
 import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
+
+from app.database import Base
+
 
 class BusinessState(Base):
     __tablename__ = "business_state"

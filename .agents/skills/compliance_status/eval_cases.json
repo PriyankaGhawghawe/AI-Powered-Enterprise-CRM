@@ -1,0 +1,12 @@
+[
+  {
+    "case_id": "compliance_status_001",
+    "input": "What is our GDPR status and compliance score?",
+    "expected_skill": "compliance-status",
+    "expected_tool_calls": [
+      {"tool": "get_compliance_status", "args": {}}
+    ],
+    "expected_output_format": "compliance_report",
+    "rubric": ["cites compliance score", "mentions GDPR status"]
+  }
+]

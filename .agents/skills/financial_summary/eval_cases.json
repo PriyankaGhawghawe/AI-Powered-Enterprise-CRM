@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "finance_runway_001",
+    "input": "What is our current financial runway?",
+    "expected_skill": "financial-summary",
+    "expected_tool_calls": [
+      {"tool": "get_financial_summary", "args": {}}
+    ],
+    "expected_output_format": "executive_summary",
+    "rubric": ["cites cash balance", "cites net monthly burn", "provides remaining runway in months"]
+  },
+  {
+    "case_id": "finance_expenses_002",
+    "input": "Break down our monthly expenses.",
+    "expected_skill": "financial-summary",
+    "expected_tool_calls": [
+      {"tool": "get_financial_summary", "args": {}}
+    ],
+    "expected_output_format": "expense_breakdown",
+    "rubric": ["lists individual expenses", "cites total monthly expenses"]
+  },
+  {
+    "case_id": "sales_deals_003",
+    "input": "Show me the top 5 deals in the pipeline.",
+    "expected_skill": "sales_pipeline",
+    "expected_tool_calls": [],
+    "expected_output_format": "none",
+    "rubric": ["does NOT trigger financial-summary skill"]
+  }
+]

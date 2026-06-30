@@ -1,0 +1,14 @@
+[
+  {
+    "case_id": "sales_deals_001",
+    "input": "Show me the top 5 deals in the pipeline.",
+    "expected_skill": "sales-pipeline",
+    "expected_tool_calls": [
+      {"tool": "get_sales_pipeline", "args": {}}
+    ],
+    "expected_output_format": "deals_list",
+    "rubric": ["cites deals", "mentions deal stages"],
+    "trajectory_scoring": "EXACT",
+    "expected_trajectory": ["get_sales_pipeline"]
+  }
+]

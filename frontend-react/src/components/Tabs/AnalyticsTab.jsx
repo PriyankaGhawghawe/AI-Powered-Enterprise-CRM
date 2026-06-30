@@ -10,8 +10,10 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
+  RadialLinearScale,
 } from 'chart.js';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar, Line, Pie, Doughnut, Radar, PolarArea } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -21,7 +23,9 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ArcElement,
+  RadialLinearScale
 );
 
 export default function AnalyticsTab({ token }) {
@@ -50,8 +54,12 @@ export default function AnalyticsTab({ token }) {
             const val = r[yAxisKey];
             return typeof val === 'number' ? val : parseFloat(val) || 0;
           }),
-          backgroundColor: 'rgba(99, 102, 241, 0.6)',
-          borderColor: 'rgb(99, 102, 241)',
+          backgroundColor: chartType === 'Pie' || chartType === 'Doughnut' || chartType === 'PolarArea'
+            ? rows.map((_, i) => `hsl(${(i * 360) / rows.length}, 70%, 60%)`)
+            : chartType === 'Radar' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.6)',
+          borderColor: chartType === 'Pie' || chartType === 'Doughnut' || chartType === 'PolarArea'
+            ? 'rgba(0, 0, 0, 0.1)'
+            : 'rgb(99, 102, 241)',
           borderWidth: 1,
         }
       ]
@@ -131,9 +139,15 @@ export default function AnalyticsTab({ token }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed to generate visualization config');
 
-      setChartType(data.chartType || 'Bar');
-      setXAxisKey(data.xAxisKey || columns[0]);
-      setYAxisKey(data.yAxisKey || (columns.length > 1 ? columns[1] : columns[0]));
+      if (data.type === 'a2ui' && data.component === 'Chart' && data.props) {
+        setChartType(data.props.chartType || 'Bar');
+        setXAxisKey(data.props.xAxisKey || columns[0]);
+        setYAxisKey(data.props.yAxisKey || (columns.length > 1 ? columns[1] : columns[0]));
+      } else {
+        setChartType('Bar');
+        setXAxisKey(columns[0]);
+        setYAxisKey(columns.length > 1 ? columns[1] : columns[0]);
+      }
       setShowChart(true);
     } catch (err) {
       setError(err.message);
@@ -305,7 +319,7 @@ export default function AnalyticsTab({ token }) {
                         }
                       }}
                     />
-                  ) : (
+                  ) : chartType === 'Line' ? (
                     <Line
                       data={chartData}
                       options={{
@@ -318,6 +332,52 @@ export default function AnalyticsTab({ token }) {
                         }
                       }}
                     />
+                  ) : chartType === 'Pie' ? (
+                    <div className="w-[300px] h-[300px]">
+                      <Pie
+                        data={chartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { position: 'right', labels: { color: 'white' } }, title: { display: false } }
+                        }}
+                      />
+                    </div>
+                  ) : chartType === 'Radar' ? (
+                    <div className="w-[400px] h-[400px]">
+                      <Radar
+                        data={chartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { position: 'top', labels: { color: 'white' } }, title: { display: false } },
+                          scales: { r: { ticks: { color: 'gray', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { color: 'white' } } }
+                        }}
+                      />
+                    </div>
+                  ) : chartType === 'PolarArea' ? (
+                    <div className="w-[350px] h-[350px]">
+                      <PolarArea
+                        data={chartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { position: 'right', labels: { color: 'white' } }, title: { display: false } },
+                          scales: { r: { ticks: { color: 'gray', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.1)' } } }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[300px] h-[300px]">
+                      <Doughnut
+                        data={chartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { legend: { position: 'right', labels: { color: 'white' } }, title: { display: false } }
+                        }}
+                      />
+                    </div>
                   )
                 ) : (
                   <p className="text-slate-400 dark:text-gray-500">Not enough data to render chart.</p>
