@@ -46,7 +46,7 @@ finally:
             env=clean_env,
             capture_output=True,
             text=True,
-            timeout=5 # 5 seconds max TTL
+            timeout=5,  # 5 seconds max TTL
         )
 
         if result.returncode != 0:

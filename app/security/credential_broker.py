@@ -18,7 +18,9 @@ class CredentialBroker:
         return token
 
     @staticmethod
-    def inject_jit_credentials(state: dict[str, Any], agent_name: str, target_resources: list[str]) -> dict[str, Any]:
+    def inject_jit_credentials(
+        state: dict[str, Any], agent_name: str, target_resources: list[str]
+    ) -> dict[str, Any]:
         """Injects JIT credentials directly into the ADK tool state delta rather than os.environ."""
         jit_store = state.get("jit_credentials", {})
         for res in target_resources:

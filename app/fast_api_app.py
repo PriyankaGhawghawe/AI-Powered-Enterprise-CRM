@@ -47,28 +47,48 @@ from app.utils.pii import mask_pii
 Base.metadata.create_all(bind=engine)
 
 
-
 def init_db_data():
     db = SessionLocal()
     try:
         if not db.query(User).filter(User.username == "admin").first():
-            db.add(User(username="admin", password_hash=get_password_hash("admin"), role="Owner", requires_password_reset=False))
+            db.add(
+                User(
+                    username="admin",
+                    password_hash=get_password_hash("admin"),
+                    role="Owner",
+                    requires_password_reset=False,
+                )
+            )
         if not db.query(User).filter(User.username == "manager").first():
-            db.add(User(username="manager", password_hash=get_password_hash("manager"), role="Manager", requires_password_reset=False))
+            db.add(
+                User(
+                    username="manager",
+                    password_hash=get_password_hash("manager"),
+                    role="Manager",
+                    requires_password_reset=False,
+                )
+            )
         if not db.query(User).filter(User.username == "employee").first():
-            db.add(User(username="employee", password_hash=get_password_hash("employee"), role="Employee", requires_password_reset=False))
-
+            db.add(
+                User(
+                    username="employee",
+                    password_hash=get_password_hash("employee"),
+                    role="Employee",
+                    requires_password_reset=False,
+                )
+            )
 
         # Seed Integrations
-        default_integrations = ['Stripe', 'Salesforce', 'Jira', 'Slack', 'HubSpot']
+        default_integrations = ["Stripe", "Salesforce", "Jira", "Slack", "HubSpot"]
         for name in default_integrations:
             if not db.query(Integration).filter(Integration.name == name).first():
-                db.add(Integration(name=name, status='disconnected'))
+                db.add(Integration(name=name, status="disconnected"))
 
         db.commit()
 
     finally:
         db.close()
+
 
 init_db_data()
 
@@ -104,11 +124,13 @@ app.title = "business-os"
 
 # === CRON JOB SETUP ===
 
+
 async def run_weekly_report():
     print("CRON: Triggered weekly report generation...")
     from google.adk.runners import InMemoryRunner
 
     from app.agent import app as adk_app
+
     runner = InMemoryRunner(app=adk_app)
 
     # We give the cron job Owner role so it has permission to generate reports
@@ -118,9 +140,14 @@ async def run_weekly_report():
         # We ask the CEO to draft a report and save it to the filesystem.
         # This will test the write_document tool automatically in the background.
         from google.genai import types
+
         cron_msg = types.Content(
             role="user",
-            parts=[types.Part.from_text(text="You are running as an automated background cron job. Please read the financial summary and sales pipeline, and write a concise weekly executive summary document. Save it using the write_document tool as 'weekly_cron_summary.md'. Keep it under 100 words.")]
+            parts=[
+                types.Part.from_text(
+                    text="You are running as an automated background cron job. Please read the financial summary and sales pipeline, and write a concise weekly executive summary document. Save it using the write_document tool as 'weekly_cron_summary.md'. Keep it under 100 words."
+                )
+            ],
         )
 
         session = await runner.session_service.get_session(
@@ -135,12 +162,13 @@ async def run_weekly_report():
             user_id="cron-bot",
             session_id="cron-weekly",
             new_message=cron_msg,
-            state_delta=state_delta
+            state_delta=state_delta,
         ):
             pass
         print("CRON: Successfully completed weekly report generation.")
     except Exception as e:
         print(f"CRON: Error running background agent: {e}")
+
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -148,16 +176,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 def run_weekly_report_sync():
     try:
         import traceback
+
         with open("cron_debug.log", "a") as f:
             f.write("Running cron sync wrapper\n")
         asyncio.run(run_weekly_report())
     except Exception:
         import traceback
+
         with open("cron_debug.log", "a") as f:
             f.write(traceback.format_exc() + "\n")
 
+
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_weekly_report_sync, 'cron', hour=9, minute=0)
+scheduler.add_job(run_weekly_report_sync, "cron", hour=9, minute=0)
 scheduler.start()
 print("CRON: BackgroundScheduler started. Daily report job will run at 9:00 AM.")
 
@@ -184,9 +215,11 @@ GLOBAL_RUNNER = None
 
 # --- Custom BusinessOS API Endpoints ---
 
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 @app.post("/api/auth/login")
 def login(req: LoginRequest):
@@ -195,30 +228,39 @@ def login(req: LoginRequest):
         user = db.query(User).filter(User.username == req.username).first()
         if not user or not verify_password(req.password, user.password_hash):
             log_action(req.username, "Failed login attempt", "System", "Denied")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+            )
 
-        access_token = create_access_token(data={
-            "sub": user.username,
-            "role": user.role,
-            "requires_password_reset": user.requires_password_reset,
-            "token_version": user.token_version
-        })
+        access_token = create_access_token(
+            data={
+                "sub": user.username,
+                "role": user.role,
+                "requires_password_reset": user.requires_password_reset,
+                "token_version": user.token_version,
+            }
+        )
         log_action(user.username, "Successful login", "System", "Success")
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "role": user.role,
             "username": user.username,
-            "requires_password_reset": user.requires_password_reset
+            "requires_password_reset": user.requires_password_reset,
         }
     finally:
         db.close()
 
+
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
+
 @app.post("/api/auth/reset-password")
-def reset_password(req: ResetPasswordRequest, token_data: dict = Depends(get_token_for_reset)):
+def reset_password(
+    req: ResetPasswordRequest, token_data: dict = Depends(get_token_for_reset)
+):
     username = token_data.get("sub")
     db = SessionLocal()
     try:
@@ -232,35 +274,42 @@ def reset_password(req: ResetPasswordRequest, token_data: dict = Depends(get_tok
         db.commit()
         log_action(user.username, "User reset their own password", "System", "Success")
 
-        access_token = create_access_token(data={
-            "sub": user.username,
-            "role": user.role,
-            "requires_password_reset": False,
-            "token_version": user.token_version
-        })
+        access_token = create_access_token(
+            data={
+                "sub": user.username,
+                "role": user.role,
+                "requires_password_reset": False,
+                "token_version": user.token_version,
+            }
+        )
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "role": user.role,
             "username": user.username,
-            "requires_password_reset": False
+            "requires_password_reset": False,
         }
     finally:
         db.close()
+
+
 class AuditLogCreate(BaseModel):
     action: str
     target: str
     status: str = "Success"
 
+
 @app.post("/api/audit")
-def create_audit_log(req: AuditLogCreate, token_data: dict = Depends(get_current_user_token)):
+def create_audit_log(
+    req: AuditLogCreate, token_data: dict = Depends(get_current_user_token)
+):
     db = SessionLocal()
     try:
         new_log = AuditLog(
             user=token_data.get("sub", "Unknown"),
             action=req.action,
             target=req.target,
-            status=req.status
+            status=req.status,
         )
         db.add(new_log)
         db.commit()
@@ -268,6 +317,7 @@ def create_audit_log(req: AuditLogCreate, token_data: dict = Depends(get_current
         return {"id": new_log.id, "message": "Audit log created"}
     finally:
         db.close()
+
 
 @app.get("/api/audit")
 def get_audit_logs(token_data: dict = Depends(get_current_user_token)):
@@ -283,12 +333,13 @@ def get_audit_logs(token_data: dict = Depends(get_current_user_token)):
                 "action": log.action,
                 "target": log.target,
                 "timestamp": log.timestamp.isoformat(),
-                "status": log.status
+                "status": log.status,
             }
             for log in logs
         ]
     finally:
         db.close()
+
 
 @app.get("/api/users")
 def get_users(token_data: dict = Depends(get_current_user_token)):
@@ -297,17 +348,29 @@ def get_users(token_data: dict = Depends(get_current_user_token)):
     db = SessionLocal()
     try:
         users = db.query(User).all()
-        return [{"id": u.id, "username": u.username, "role": u.role, "created_at": u.created_at} for u in users]
+        return [
+            {
+                "id": u.id,
+                "username": u.username,
+                "role": u.role,
+                "created_at": u.created_at,
+            }
+            for u in users
+        ]
     finally:
         db.close()
+
 
 class CreateUserRequest(BaseModel):
     username: str
     password: str
     role: str
 
+
 @app.post("/api/users")
-def create_user(req: CreateUserRequest, token_data: dict = Depends(get_current_user_token)):
+def create_user(
+    req: CreateUserRequest, token_data: dict = Depends(get_current_user_token)
+):
     if token_data.get("role") != "Owner":
         raise HTTPException(status_code=403, detail="Not authorized")
     db = SessionLocal()
@@ -320,10 +383,16 @@ def create_user(req: CreateUserRequest, token_data: dict = Depends(get_current_u
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        log_action(token_data.get("sub"), f"Created new user {req.username} with role {req.role}", "System", "Success")
+        log_action(
+            token_data.get("sub"),
+            f"Created new user {req.username} with role {req.role}",
+            "System",
+            "Success",
+        )
         return {"id": new_user.id, "username": new_user.username, "role": new_user.role}
     finally:
         db.close()
+
 
 @app.delete("/api/users/{user_id}")
 def delete_user(user_id: int, token_data: dict = Depends(get_current_user_token)):
@@ -338,16 +407,24 @@ def delete_user(user_id: int, token_data: dict = Depends(get_current_user_token)
             raise HTTPException(status_code=400, detail="Cannot delete yourself")
         db.delete(user)
         db.commit()
-        log_action(token_data.get("sub"), f"Deleted user {user.username}", "System", "Success")
+        log_action(
+            token_data.get("sub"), f"Deleted user {user.username}", "System", "Success"
+        )
         return {"status": "success"}
     finally:
         db.close()
 
+
 class AdminResetPasswordRequest(BaseModel):
     new_password: str
 
+
 @app.post("/api/users/{user_id}/reset-password")
-def admin_reset_password(user_id: int, req: AdminResetPasswordRequest, token_data: dict = Depends(get_current_user_token)):
+def admin_reset_password(
+    user_id: int,
+    req: AdminResetPasswordRequest,
+    token_data: dict = Depends(get_current_user_token),
+):
     if token_data.get("role") != "Owner":
         raise HTTPException(status_code=403, detail="Not authorized")
     db = SessionLocal()
@@ -360,16 +437,27 @@ def admin_reset_password(user_id: int, req: AdminResetPasswordRequest, token_dat
         user.requires_password_reset = True
         user.token_version += 1
         db.commit()
-        log_action(token_data.get("sub"), f"Admin reset password for {user.username}", "System", "Success")
+        log_action(
+            token_data.get("sub"),
+            f"Admin reset password for {user.username}",
+            "System",
+            "Success",
+        )
         return {"status": "success", "message": f"Password reset for {user.username}"}
     finally:
         db.close()
 
+
 class EditRoleRequest(BaseModel):
     role: str
 
+
 @app.put("/api/users/{user_id}/role")
-def edit_user_role(user_id: int, req: EditRoleRequest, token_data: dict = Depends(get_current_user_token)):
+def edit_user_role(
+    user_id: int,
+    req: EditRoleRequest,
+    token_data: dict = Depends(get_current_user_token),
+):
     if token_data.get("role") != "Owner":
         raise HTTPException(status_code=403, detail="Not authorized")
     db = SessionLocal()
@@ -381,12 +469,17 @@ def edit_user_role(user_id: int, req: EditRoleRequest, token_data: dict = Depend
             raise HTTPException(status_code=400, detail="Cannot edit your own role")
         user.role = req.role
         db.commit()
-        return {"status": "success", "message": f"Role updated to {user.role} for {user.username}"}
+        return {
+            "status": "success",
+            "message": f"Role updated to {user.role} for {user.username}",
+        }
     finally:
         db.close()
 
+
 class ConfigureIntegrationRequest(BaseModel):
     api_key: str
+
 
 @app.get("/api/integrations")
 def get_integrations(token_data: dict = Depends(get_current_user_token)):
@@ -398,17 +491,24 @@ def get_integrations(token_data: dict = Depends(get_current_user_token)):
                 "id": i.id,
                 "name": i.name,
                 "status": i.status,
-                "last_synced_at": i.last_synced_at
+                "last_synced_at": i.last_synced_at,
             }
             for i in integrations
         ]
     finally:
         db.close()
 
+
 @app.post("/api/integrations/{name}/configure")
-def configure_integration(name: str, req: ConfigureIntegrationRequest, token_data: dict = Depends(get_current_user_token)):
+def configure_integration(
+    name: str,
+    req: ConfigureIntegrationRequest,
+    token_data: dict = Depends(get_current_user_token),
+):
     if token_data.get("role") != "Owner":
-        raise HTTPException(status_code=403, detail="Only Owners can configure integrations")
+        raise HTTPException(
+            status_code=403, detail="Only Owners can configure integrations"
+        )
     db = SessionLocal()
     try:
         integration = db.query(Integration).filter(Integration.name == name).first()
@@ -421,6 +521,7 @@ def configure_integration(name: str, req: ConfigureIntegrationRequest, token_dat
     finally:
         db.close()
 
+
 @app.post("/api/integrations/{name}/sync")
 def sync_integration(name: str, token_data: dict = Depends(get_current_user_token)):
     db = SessionLocal()
@@ -429,15 +530,21 @@ def sync_integration(name: str, token_data: dict = Depends(get_current_user_toke
         if not integration:
             raise HTTPException(status_code=404, detail="Integration not found")
         if integration.status != "connected":
-            raise HTTPException(status_code=400, detail="Integration must be configured first")
+            raise HTTPException(
+                status_code=400, detail="Integration must be configured first"
+            )
 
         # Simulate syncing logic using decrypted key
-        _plaintext_key = decrypt_data(integration.api_key) if integration.api_key else None
+        _plaintext_key = (
+            decrypt_data(integration.api_key) if integration.api_key else None
+        )
         integration.last_synced_at = datetime.datetime.utcnow()
         db.commit()
         return {"status": "success", "message": f"Successfully synced data from {name}"}
     finally:
         db.close()
+
+
 @app.get("/api/data")
 def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dict:
     """Fetch the current editable business database state from normalized tables."""
@@ -449,6 +556,7 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
         RegulatoryRisk,
         SalesDeal,
     )
+
     db = SessionLocal()
     try:
         metrics = {m.key: m.value for m in db.query(BusinessMetric).all()}
@@ -457,16 +565,20 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
         for key, val in metrics.items():
             if key.startswith("financials.expenses."):
                 k = key.split(".")[-1]
-                if val.isdigit(): val = int(val)
+                if val.isdigit():
+                    val = int(val)
                 financials["expenses"][k] = val
             elif key.startswith("financials."):
                 k = key.split(".")[1]
-                if val.isdigit(): val = int(val)
+                if val.isdigit():
+                    val = int(val)
                 financials[k] = val
 
         historical = []
         for hp in db.query(HistoricalPerformance).all():
-            historical.append({"month": hp.month, "revenue": hp.revenue, "expenses": hp.expenses})
+            historical.append(
+                {"month": hp.month, "revenue": hp.revenue, "expenses": hp.expenses}
+            )
         financials["historical_performance"] = historical
 
         deals = []
@@ -476,15 +588,40 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
             # Row-level downscoping: Employees only see their own assigned deals
             if user_role == "Employee" and d.owner != username:
                 continue
-            deals.append({"id": d.id, "name": d.name, "value": d.value, "stage": d.stage, "probability": float(d.probability), "owner": d.owner, "age_days": d.age_days})
+            deals.append(
+                {
+                    "id": d.id,
+                    "name": d.name,
+                    "value": d.value,
+                    "stage": d.stage,
+                    "probability": float(d.probability),
+                    "owner": d.owner,
+                    "age_days": d.age_days,
+                }
+            )
 
         competitors = []
         for c in db.query(Competitor).all():
-            competitors.append({"name": c.name, "market_share": c.market_share, "pricing": c.pricing, "strengths": c.strengths, "weaknesses": c.weaknesses})
+            competitors.append(
+                {
+                    "name": c.name,
+                    "market_share": c.market_share,
+                    "pricing": c.pricing,
+                    "strengths": c.strengths,
+                    "weaknesses": c.weaknesses,
+                }
+            )
 
         risks = []
         for r in db.query(RegulatoryRisk).all():
-            risks.append({"risk_area": r.risk_area, "description": r.description, "severity": r.severity, "mitigation": r.mitigation or ""})
+            risks.append(
+                {
+                    "risk_area": r.risk_area,
+                    "description": r.description,
+                    "severity": r.severity,
+                    "mitigation": r.mitigation or "",
+                }
+            )
 
         checklist = []
         for cl in db.query(ComplianceChecklist).all():
@@ -495,27 +632,36 @@ def get_business_data(token_data: dict = Depends(get_current_user_token)) -> dic
             "industry": metrics.get("industry", ""),
             "financials": financials,
             "sales_pipeline": {
-                "stages": ["Lead", "Demo", "Proposal", "Negotiation", "Closed Won", "Closed Lost"],
+                "stages": [
+                    "Lead",
+                    "Demo",
+                    "Proposal",
+                    "Negotiation",
+                    "Closed Won",
+                    "Closed Lost",
+                ],
                 "deals": deals,
-                "average_deal_cycle_days": 42
+                "average_deal_cycle_days": 42,
             },
             "market_intelligence": {
                 "competitors": competitors,
                 "industry_growth_rate": "24% YoY",
-                "customer_demographics": "Mid-market software companies and digital agencies"
+                "customer_demographics": "Mid-market software companies and digital agencies",
             },
             "compliance": {
                 "gdpr_status": "Compliant (Last Audit: May 2026)",
                 "checklist": checklist,
-                "regulatory_risks": risks
-            }
+                "regulatory_risks": risks,
+            },
         }
     finally:
         db.close()
 
 
 @app.post("/api/data")
-def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(get_current_user_token)) -> dict:
+def update_business_data(
+    payload: DataUpdateRequest, token_data: dict = Depends(get_current_user_token)
+) -> dict:
     """Overwrite the current business database state with updated edits."""
     if token_data.get("role") != "Owner":
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -528,6 +674,7 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
         RegulatoryRisk,
         SalesDeal,
     )
+
     db = SessionLocal()
     try:
         # We wipe and recreate the tables to simulate the "save JSON" behavior for simplicity
@@ -555,7 +702,10 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
             for d in data["sales_pipeline"]["deals"]:
                 db.add(SalesDeal(**d))
 
-        if "market_intelligence" in data and "competitors" in data["market_intelligence"]:
+        if (
+            "market_intelligence" in data
+            and "competitors" in data["market_intelligence"]
+        ):
             for c in data["market_intelligence"]["competitors"]:
                 db.add(Competitor(**c))
 
@@ -575,9 +725,13 @@ def update_business_data(payload: DataUpdateRequest, token_data: dict = Depends(
     finally:
         db.close()
 
-    log_action(token_data.get("role"), "Updated business database variables natively", token_data.get("sub"), "Success")
+    log_action(
+        token_data.get("role"),
+        "Updated business database variables natively",
+        token_data.get("sub"),
+        "Success",
+    )
     return {"status": "success", "message": "Database updated successfully."}
-
 
 
 @app.post("/api/chat_test")
@@ -585,8 +739,11 @@ async def chat_test(token_data: dict = Depends(get_current_user_token)):
     print("HITTING CHAT TEST ENDPOINT", flush=True)
     return {"message": "hello"}
 
+
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current_user_token)):
+async def chat_endpoint(
+    req: ChatRequest, token_data: dict = Depends(get_current_user_token)
+):
     print(f"HITTING CHAT ENDPOINT WITH {req}", flush=True)
     """Secure multi-agent chat endpoint with PII scrubbing, RBAC delegation, and trace capturing."""
     from google.adk.runners import InMemoryRunner
@@ -617,8 +774,8 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             "- For any restricted topic, politely explain that financial data requires Manager or Owner access.\n"
             "User message: "
         ),
-        "Manager": None,   # Managers get full chat access
-        "Owner": None,     # Owners get full chat access
+        "Manager": None,  # Managers get full chat access
+        "Owner": None,  # Owners get full chat access
     }
 
     new_message = None
@@ -631,8 +788,9 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
 
         # Scenario Mode injection
         scenario_context = ""
-        if getattr(req, 'simulated_db', None):
+        if getattr(req, "simulated_db", None):
             import json
+
             scenario_context = (
                 "\n\n[SCENARIO MODE ACTIVE] The user is currently running a 'What-If' simulation.\n"
                 "DO NOT use the physical db.json for this query.\n"
@@ -641,7 +799,11 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                 "Please analyze the situation based *only* on this hypothetical scenario data.\n"
             )
 
-        full_message = (directive + scenario_context + "\nUser message: " + masked_message) if (directive or scenario_context) else masked_message
+        full_message = (
+            (directive + scenario_context + "\nUser message: " + masked_message)
+            if (directive or scenario_context)
+            else masked_message
+        )
 
         new_message = types.Content(
             role="user", parts=[types.Part.from_text(text=full_message)]
@@ -655,7 +817,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             return {
                 "response": "⛔ **MFA Validation Failed.** The TOTP code provided was incorrect. Action aborted.",
                 "trace": [{"author": "System", "type": "error", "text": "MFA Failed"}],
-                "needs_confirmation": False
+                "needs_confirmation": False,
             }
 
         status_str = "Approved (MFA Validated)" if confirmed else "Rejected"
@@ -691,7 +853,10 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         app_name=adk_app.name, user_id=req.user_id, session_id=req.session_id
     )
     if session:
-        print(f"[DEBUG] Loaded existing session {session.id} with {len(session.events)} events.", flush=True)
+        print(
+            f"[DEBUG] Loaded existing session {session.id} with {len(session.events)} events.",
+            flush=True,
+        )
         for idx, ev in enumerate(session.events):
             fcs_str = []
             if ev.get_function_calls():
@@ -700,8 +865,13 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             frs_str = []
             if ev.get_function_responses():
                 for fr in ev.get_function_responses():
-                    frs_str.append(f"name={fr.name}, id={fr.id}, response={fr.response}")
-            print(f"[DEBUG] Event {idx}: author={ev.author}, fcs={fcs_str}, frs={frs_str}", flush=True)
+                    frs_str.append(
+                        f"name={fr.name}, id={fr.id}, response={fr.response}"
+                    )
+            print(
+                f"[DEBUG] Event {idx}: author={ev.author}, fcs={fcs_str}, frs={frs_str}",
+                flush=True,
+            )
     else:
         print(f"[DEBUG] No existing session found for {req.session_id}.", flush=True)
 
@@ -712,6 +882,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
     state_delta = {"user_role": req.role}
 
     from opentelemetry import trace as otel_trace
+
     tracer = otel_trace.get_tracer("business_os_agents")
 
     events = []
@@ -806,12 +977,24 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                 for fc in event.get_function_calls():
                     # --- ABA Hook (Pillar 6) ---
                     from app.security.agent_behavioural_analytics import aba_engine
+
                     if aba_engine.record_tool_call(req.session_id, fc.name):
-                        log_action(req.role, f"ABA Quarantine Triggered for {req.session_id} due to volume of calls", "Security System", "Quarantined")
+                        log_action(
+                            req.role,
+                            f"ABA Quarantine Triggered for {req.session_id} due to volume of calls",
+                            "Security System",
+                            "Quarantined",
+                        )
                         return {
                             "response": "⛔ **SECURITY QUARANTINE ACTIVE.** Agent Behavioural Analytics (ABA) has detected an abnormal volume of tool executions. The active session has been locked to prevent potential prompt injection or runaway hallucination loops.",
-                            "trace": [{"author": "Security System", "type": "error", "text": "Stateful Quarantine triggered due to rate limit violation."}],
-                            "needs_confirmation": False
+                            "trace": [
+                                {
+                                    "author": "Security System",
+                                    "type": "error",
+                                    "text": "Stateful Quarantine triggered due to rate limit violation.",
+                                }
+                            ],
+                            "needs_confirmation": False,
                         }
                     # ---------------------------
                     with tracer.start_as_current_span("agent.tool") as tool_span:
@@ -827,7 +1010,9 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                     )
             if event.get_function_responses():
                 for fr in event.get_function_responses():
-                    with tracer.start_as_current_span("agent.tool_response") as response_span:
+                    with tracer.start_as_current_span(
+                        "agent.tool_response"
+                    ) as response_span:
                         response_span.set_attribute("tool.name", fr.name)
                     trace_logs.append(
                         {
@@ -881,13 +1066,19 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         if req.session_id not in chat_history_db:
             chat_history_db[req.session_id] = []
         if req.message:
-            chat_history_db[req.session_id].append({"sender": "You", "text": masked_message, "is_user": True})
+            chat_history_db[req.session_id].append(
+                {"sender": "You", "text": masked_message, "is_user": True}
+            )
         if text_response:
-            chat_history_db[req.session_id].append({"sender": "System", "text": text_response, "is_user": False})
+            chat_history_db[req.session_id].append(
+                {"sender": "System", "text": text_response, "is_user": False}
+            )
 
         # Calculate and Log Session Convergence Metrics (Evaluation Quality Flywheel)
         turns_count = len(chat_history_db[req.session_id])
-        user_signals = [msg["text"] for msg in chat_history_db[req.session_id] if msg["is_user"]]
+        user_signals = [
+            msg["text"] for msg in chat_history_db[req.session_id] if msg["is_user"]
+        ]
 
         # GenAI-based Intent Satisfaction Evaluator (Pillar 2 Evaluation Framework)
         satisfaction_score = 5
@@ -895,6 +1086,7 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
         if req.message and text_response:
             try:
                 from google.genai import Client
+
                 # Reuse vertex client setup context if valid API keys exist
                 client = Client()
                 eval_prompt = (
@@ -908,16 +1100,25 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=eval_prompt,
-                    config={"response_mime_type": "application/json"}
+                    config={"response_mime_type": "application/json"},
                 )
                 import json
+
                 eval_data = json.loads(response.text.strip())
                 converged = eval_data.get("converged", converged)
-                satisfaction_score = eval_data.get("satisfaction_score", satisfaction_score)
+                satisfaction_score = eval_data.get(
+                    "satisfaction_score", satisfaction_score
+                )
             except Exception as eval_err:
-                print(f"[EVAL ERROR] GenAI Satisfaction Evaluation skipped: {eval_err}", flush=True)
+                print(
+                    f"[EVAL ERROR] GenAI Satisfaction Evaluation skipped: {eval_err}",
+                    flush=True,
+                )
                 # Fallback rule of thumb satisfaction score
-                if any(kw in (user_signals[-1] if user_signals else "").lower() for kw in ["no", "incorrect", "wrong", "stop"]):
+                if any(
+                    kw in (user_signals[-1] if user_signals else "").lower()
+                    for kw in ["no", "incorrect", "wrong", "stop"]
+                ):
                     satisfaction_score = 2
                     converged = False
 
@@ -926,14 +1127,17 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             try:
                 import json
                 import time
+
                 with open("failed_traces.jsonl", "a", encoding="utf-8") as f:
                     failure_record = {
                         "session_id": req.session_id,
                         "timestamp": time.time(),
-                        "user_correction": user_signals[-1] if user_signals else req.message,
+                        "user_correction": user_signals[-1]
+                        if user_signals
+                        else req.message,
                         "agent_response": text_response,
                         "trace": trace_logs,
-                        "satisfaction_score": satisfaction_score
+                        "satisfaction_score": satisfaction_score,
                     }
                     f.write(json.dumps(failure_record) + "\n")
             except Exception as e:
@@ -947,9 +1151,12 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
             username,
             f"Evaluation Convergence Metric - Turns: {turns_count}, Converged: {converged}, Satisfaction: {satisfaction_score}/5, Cost: ${estimated_token_cost_usd:.5f}",
             "Evaluation Engine",
-            "Success"
+            "Success",
         )
-        print(f"[EVAL] Session ID: {req.session_id} | Turns: {turns_count} | Converged: {converged} | Satisfaction: {satisfaction_score}/5 | Est. Cost: ${estimated_token_cost_usd:.5f}", flush=True)
+        print(
+            f"[EVAL] Session ID: {req.session_id} | Turns: {turns_count} | Converged: {converged} | Satisfaction: {satisfaction_score}/5 | Est. Cost: ${estimated_token_cost_usd:.5f}",
+            flush=True,
+        )
 
         return {
             "response": text_response,
@@ -961,9 +1168,10 @@ async def chat_endpoint(req: ChatRequest, token_data: dict = Depends(get_current
                 "turns_count": turns_count,
                 "converged": converged,
                 "satisfaction_score": satisfaction_score,
-                "estimated_token_cost_usd": estimated_token_cost_usd
-            }
+                "estimated_token_cost_usd": estimated_token_cost_usd,
+            },
         }
+
 
 class ChartPinRequest(BaseModel):
     title: str
@@ -971,6 +1179,7 @@ class ChartPinRequest(BaseModel):
     chart_type: str
     x_axis: str
     y_axis: str
+
 
 @app.post("/api/charts/pin")
 def pin_chart(req: ChartPinRequest, token_data: dict = Depends(get_current_user_token)):
@@ -993,7 +1202,7 @@ def pin_chart(req: ChartPinRequest, token_data: dict = Depends(get_current_user_
             x_axis=req.x_axis,
             y_axis=req.y_axis,
             pinned_by=token_data.get("sub"),
-            date_pinned=datetime.datetime.utcnow()
+            date_pinned=datetime.datetime.utcnow(),
         )
         db.add(new_chart)
         db.commit()
@@ -1007,15 +1216,17 @@ def pin_chart(req: ChartPinRequest, token_data: dict = Depends(get_current_user_
                 "x_axis": req.x_axis,
                 "y_axis": req.y_axis,
                 "pinned_by": token_data.get("sub"),
-                "date_pinned": new_chart.date_pinned.isoformat()
-            }
+                "date_pinned": new_chart.date_pinned.isoformat(),
+            },
         }
     finally:
         db.close()
 
+
 @app.get("/api/charts/pinned")
 def get_pinned_charts(token_data: dict = Depends(get_current_user_token)):
     from app.models import PinnedChart
+
     db = SessionLocal()
     try:
         charts = db.query(PinnedChart).all()
@@ -1028,20 +1239,26 @@ def get_pinned_charts(token_data: dict = Depends(get_current_user_token)):
                 "x_axis": c.x_axis,
                 "y_axis": c.y_axis,
                 "pinned_by": c.pinned_by,
-                "date_pinned": c.date_pinned.isoformat()
-            } for c in charts
+                "date_pinned": c.date_pinned.isoformat(),
+            }
+            for c in charts
         ]
     finally:
         db.close()
 
+
 class SQLGenerateRequest(BaseModel):
     query: str
+
 
 class SQLExecuteRequest(BaseModel):
     sql: str
 
+
 @app.post("/api/sql/generate")
-async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_current_user_token)):
+async def generate_sql(
+    req: SQLGenerateRequest, token_data: dict = Depends(get_current_user_token)
+):
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     import os
@@ -1053,7 +1270,7 @@ async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_c
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     schema_prompt = """
     You are an expert SQL assistant for BusinessOS. You will generate valid SQLite queries based on the user's natural language request.
@@ -1076,14 +1293,17 @@ async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_c
     """
 
     try:
-        response = await model.generate_content_async([schema_prompt, f"User Request: {req.query}"])
-        sql_query = response.text.strip().strip('`').strip('sql').strip()
+        response = await model.generate_content_async(
+            [schema_prompt, f"User Request: {req.query}"]
+        )
+        sql_query = response.text.strip().strip("`").strip("sql").strip()
         return {"sql": sql_query}
     except Exception as e:
         error_msg = str(e)
         if "429" in error_msg or "Quota exceeded" in error_msg:
             # Try to extract the retry delay if present
             import re
+
             retry_match = re.search(r"retry in ([\d\.]+)s", error_msg)
             if retry_match:
                 delay = round(float(retry_match.group(1)))
@@ -1091,14 +1311,20 @@ async def generate_sql(req: SQLGenerateRequest, token_data: dict = Depends(get_c
             else:
                 friendly_msg = "Gemini AI Quota Exceeded. You have reached the free tier limit. Please try again in a few moments or upgrade your API plan."
             raise HTTPException(status_code=429, detail=friendly_msg)
-        raise HTTPException(status_code=500, detail=f"Failed to generate SQL: {error_msg}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate SQL: {error_msg}"
+        )
+
 
 class SQLVisualizeRequest(BaseModel):
     columns: list
     rows: list
 
+
 @app.post("/api/sql/visualize")
-async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get_current_user_token)):
+async def visualize_sql(
+    req: SQLVisualizeRequest, token_data: dict = Depends(get_current_user_token)
+):
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -1115,7 +1341,7 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
     You are a data visualization expert. I will provide you with the columns and a sample of rows from a SQL query result.
@@ -1153,6 +1379,7 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
         if "429" in error_msg or "Quota exceeded" in error_msg:
             # Try to extract the retry delay if present
             import re
+
             retry_match = re.search(r"retry in ([\d\.]+)s", error_msg)
             if retry_match:
                 delay = round(float(retry_match.group(1)))
@@ -1165,11 +1392,16 @@ async def visualize_sql(req: SQLVisualizeRequest, token_data: dict = Depends(get
         return {
             "chartType": "Bar",
             "xAxisKey": req.columns[0] if len(req.columns) > 0 else "",
-            "yAxisKey": req.columns[1] if len(req.columns) > 1 else (req.columns[0] if len(req.columns) > 0 else "")
+            "yAxisKey": req.columns[1]
+            if len(req.columns) > 1
+            else (req.columns[0] if len(req.columns) > 0 else ""),
         }
 
+
 @app.post("/api/sql/execute")
-def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_user_token)):
+def execute_sql(
+    req: SQLExecuteRequest, token_data: dict = Depends(get_current_user_token)
+):
     user_role = token_data.get("role", "Employee")
     if user_role not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -1177,7 +1409,10 @@ def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_u
     sql = req.sql.strip()
     # Basic security check to prevent modifications
     if not sql.upper().startswith("SELECT"):
-        raise HTTPException(status_code=400, detail="Only SELECT statements are allowed for security reasons.")
+        raise HTTPException(
+            status_code=400,
+            detail="Only SELECT statements are allowed for security reasons.",
+        )
 
     # Security restriction: prevent Employees from querying credentials, password hashes, or logs via raw SQL
     if user_role == "Employee":
@@ -1185,26 +1420,31 @@ def execute_sql(req: SQLExecuteRequest, token_data: dict = Depends(get_current_u
         if any(table in sql.lower() for table in restricted_tables):
             raise HTTPException(
                 status_code=403,
-                detail="Access Denied: Your employee role is restricted from querying system credentials, compliance risks, or audit logging tables."
+                detail="Access Denied: Your employee role is restricted from querying system credentials, compliance risks, or audit logging tables.",
             )
 
     from app.sandbox_runtime import execute_sql_sandboxed
+
     try:
         result = execute_sql_sandboxed(sql)
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"SQL Execution Error: {e!s}")
 
+
 class WarRoomRequest(BaseModel):
     query: str
 
+
 @app.post("/api/warroom/debate")
-async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_current_user_token)):
+async def warroom_debate(
+    req: WarRoomRequest, token_data: dict = Depends(get_current_user_token)
+):
     user_role = token_data.get("role", "Employee")
     if user_role == "Employee":
         raise HTTPException(
             status_code=403,
-            detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity."
+            detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity.",
         )
     import json
 
@@ -1216,7 +1456,7 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     async def generate_debate():
         yield f"data: {json.dumps({'agent': 'system', 'content': 'Starting War Room Session...'})}\n\n"
@@ -1225,7 +1465,9 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
         # Financial Analyst
         yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': 'Analyzing financial implications...'})}\n\n"
         try:
-            fin_response = await model.generate_content_async(f"You are a strict Financial Analyst. The user asks: {req.query}. Give a concise 2-sentence financial perspective.")
+            fin_response = await model.generate_content_async(
+                f"You are a strict Financial Analyst. The user asks: {req.query}. Give a concise 2-sentence financial perspective."
+            )
             yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': fin_response.text.strip()})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': f'Error analyzing data: {e!r}'})}\n\n"
@@ -1236,7 +1478,9 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
         # VP of Sales
         yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': 'Reviewing sales pipeline impact...'})}\n\n"
         try:
-            sales_response = await model.generate_content_async(f"You are an aggressive VP of Sales. The user asks: {req.query}. Give a concise 2-sentence sales perspective.")
+            sales_response = await model.generate_content_async(
+                f"You are an aggressive VP of Sales. The user asks: {req.query}. Give a concise 2-sentence sales perspective."
+            )
             yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': sales_response.text.strip()})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': f'Error analyzing data: {e!r}'})}\n\n"
@@ -1249,7 +1493,9 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
         try:
             fin_text = fin_response.text if fin_response else "No financial data."
             sales_text = sales_response.text if sales_response else "No sales data."
-            synth_response = await model.generate_content_async(f"Synthesize these perspectives into a final 2-sentence executive summary. Financial: {fin_text}, Sales: {sales_text}. User Query: {req.query}")
+            synth_response = await model.generate_content_async(
+                f"Synthesize these perspectives into a final 2-sentence executive summary. Financial: {fin_text}, Sales: {sales_text}. User Query: {req.query}"
+            )
             yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': synth_response.text.strip()})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': f'Error: {e!r}'})}\n\n"
@@ -1258,10 +1504,15 @@ async def warroom_debate(req: WarRoomRequest, token_data: dict = Depends(get_cur
 
     return StreamingResponse(generate_debate(), media_type="text/event-stream")
 
+
 @app.delete("/api/integrations/{name}")
-def disconnect_integration(name: str, token_data: dict = Depends(get_current_user_token)):
+def disconnect_integration(
+    name: str, token_data: dict = Depends(get_current_user_token)
+):
     if token_data.get("role") != "Owner":
-        raise HTTPException(status_code=403, detail="Only Owners can disconnect integrations")
+        raise HTTPException(
+            status_code=403, detail="Only Owners can disconnect integrations"
+        )
     db = SessionLocal()
     try:
         integration = db.query(Integration).filter(Integration.name == name).first()
@@ -1274,15 +1525,20 @@ def disconnect_integration(name: str, token_data: dict = Depends(get_current_use
     finally:
         db.close()
 
+
 @app.post("/api/integrations/sync/{integration_name}")
-async def mcp_sync_integration(integration_name: str, token_data: dict = Depends(get_current_user_token)):
+async def mcp_sync_integration(
+    integration_name: str, token_data: dict = Depends(get_current_user_token)
+):
     import json
 
     from fastapi.responses import StreamingResponse
 
     db = SessionLocal()
     try:
-        integration = db.query(Integration).filter(Integration.name == integration_name).first()
+        integration = (
+            db.query(Integration).filter(Integration.name == integration_name).first()
+        )
         if integration:
             integration.last_synced_at = datetime.datetime.utcnow()
             db.commit()
@@ -1297,7 +1553,7 @@ async def mcp_sync_integration(integration_name: str, token_data: dict = Depends
             f"[{integration_name}] Connection established securely.",
             f"[{integration_name}] Fetching records from endpoints...",
             f"[{integration_name}] Processing 450 records...",
-            "[MCP] Sync complete! Updating local database..."
+            "[MCP] Sync complete! Updating local database...",
         ]
         for log in logs:
             yield f"data: {json.dumps({'log': log})}\n\n"
@@ -1325,6 +1581,7 @@ if os.path.exists(frontend_path):
     async def serve_react(full_path: str = ""):
         return FileResponse(os.path.join(frontend_path, "index.html"))
 
+
 # Feature 2: Outbox
 @app.get("/api/outbox")
 async def get_outbox(token_data: dict = Depends(get_current_user_token)):
@@ -1332,43 +1589,91 @@ async def get_outbox(token_data: dict = Depends(get_current_user_token)):
     import os
     from datetime import datetime
 
-    outbox_dir = os.path.join(os.path.dirname(__file__), "outbox")
-    if not os.path.exists(outbox_dir):
-        return []
-
+    bucket_name = os.environ.get("GCS_BUCKET_NAME")
     files = []
-    for fp in glob.glob(os.path.join(outbox_dir, "*.md")):
-        with open(fp) as f:
-            content = f.read()
-        mtime = os.path.getmtime(fp)
 
-        # Basic parsing
-        subject_line = "Agent Report"
-        to_line = "Executive Team"
-        for line in content.splitlines():
-            if line.startswith("Subject:"):
-                subject_line = line.replace("Subject:", "").strip()
-            elif line.startswith("To:"):
-                to_line = line.replace("To:", "").strip()
+    if bucket_name:
+        try:
+            from google.cloud import storage
 
-        files.append({
-            "filename": os.path.basename(fp),
-            "content": content,
-            "subject": subject_line,
-            "to": to_line,
-            "body": content,
-            "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
-            "mtime": mtime
-        })
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+
+            for blob in bucket.list_blobs(prefix="outbox/"):
+                if blob.name.endswith(".md") or blob.name.endswith(".txt"):
+                    content = blob.download_as_text()
+
+                    subject_line = "Agent Report"
+                    to_line = "Executive Team"
+                    for line in content.splitlines():
+                        if line.startswith("Subject:"):
+                            subject_line = line.replace("Subject:", "").strip()
+                        elif line.startswith("To:"):
+                            to_line = line.replace("To:", "").strip()
+
+                    mtime = blob.updated.timestamp() if blob.updated else 0
+                    files.append(
+                        {
+                            "filename": os.path.basename(blob.name),
+                            "content": content,
+                            "subject": subject_line,
+                            "to": to_line,
+                            "body": content,
+                            "modified": datetime.fromtimestamp(mtime).strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            "mtime": mtime,
+                        }
+                    )
+        except Exception as e:
+            print(f"GCS Outbox Error: {e}")
+    else:
+        outbox_dir = os.path.join(os.path.dirname(__file__), "outbox")
+        if os.path.exists(outbox_dir):
+            for fp in glob.glob(os.path.join(outbox_dir, "**/*.*"), recursive=True):
+                if not fp.endswith(".md") and not fp.endswith(".txt"):
+                    continue
+                with open(fp) as f:
+                    content = f.read()
+                mtime = os.path.getmtime(fp)
+
+                subject_line = "Agent Report"
+                to_line = "Executive Team"
+                for line in content.splitlines():
+                    if line.startswith("Subject:"):
+                        subject_line = line.replace("Subject:", "").strip()
+                    elif line.startswith("To:"):
+                        to_line = line.replace("To:", "").strip()
+
+                files.append(
+                    {
+                        "filename": os.path.basename(fp),
+                        "content": content,
+                        "subject": subject_line,
+                        "to": to_line,
+                        "body": content,
+                        "modified": datetime.fromtimestamp(mtime).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "mtime": mtime,
+                    }
+                )
+
     files.sort(key=lambda x: x["mtime"], reverse=True)
     return files
+
+
 # Feature 4: Chat History
 # Simple in-memory dict for demo purposes
 chat_history_db = {}
 
+
 @app.get("/api/chat/history")
-async def get_chat_history(session_id: str, token_data: dict = Depends(get_current_user_token)):
+async def get_chat_history(
+    session_id: str, token_data: dict = Depends(get_current_user_token)
+):
     return chat_history_db.get(session_id, [])
+
 
 # Patch the existing /api/chat endpoint to save to history
 
@@ -1386,6 +1691,7 @@ async def get_analytics():
             db = json.load(f)
     except FileNotFoundError:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Database not found")
 
     current_cash = db.get("financials", {}).get("cash_balance", 0)
@@ -1401,7 +1707,7 @@ async def get_analytics():
     mrr_step = current_mrr
 
     for i in range(11, -1, -1):
-        month_date = datetime.now() - timedelta(days=30*i)
+        month_date = datetime.now() - timedelta(days=30 * i)
         data["months"].append(month_date.strftime("%b %Y"))
 
         # Current month is the live data
@@ -1413,13 +1719,16 @@ async def get_analytics():
         else:
             # Randomly subtract growth for historical months
             mrr_step -= random.randint(1000, 5000)
-            cash_step += random.randint(10000, 40000) # cash goes up when looking back if we were burning
+            cash_step += random.randint(
+                10000, 40000
+            )  # cash goes up when looking back if we were burning
 
             data["cash_flow"].append(max(0, cash_step))
             data["mrr"].append(max(0, mrr_step))
             data["pipeline_value"].append(max(0, mrr_step * random.uniform(2.5, 3.5)))
 
     return {"status": "success", "data": data}
+
 
 @app.post("/feedback")
 def collect_feedback(feedback: Feedback) -> dict[str, str]:

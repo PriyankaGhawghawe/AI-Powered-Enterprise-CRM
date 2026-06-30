@@ -5,7 +5,7 @@ from app.utils.audit import log_action
 
 def fetch_market_news(query: str, tool_context: ToolContext) -> list[dict]:
     """Search the live web for real-time market news and competitor intelligence.
-    
+
     Args:
         query: The search term or topic to query on the web.
     """

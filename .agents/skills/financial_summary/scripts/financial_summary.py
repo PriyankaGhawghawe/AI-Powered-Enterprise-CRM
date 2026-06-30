@@ -15,7 +15,9 @@ def get_financial_summary(tool_context: ToolContext) -> dict:
     caller = tool_context.state.get("active_agent") or "ceo_agent"
     # Allow cfo_agent and ceo_agent (or cron-bot background tasks)
     if "cfo" not in caller and "ceo" not in caller and "cron" not in caller:
-        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access financial database details (requires CFO role).")
+        raise PermissionError(
+            f"Access Denied: Agent '{caller}' is not authorized to access financial database details (requires CFO role)."
+        )
 
     db = SessionLocal()
     try:

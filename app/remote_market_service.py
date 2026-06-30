@@ -20,7 +20,9 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 skills_dict = load_skills()
-market_tools = skills_dict.get("market_intelligence", []) + skills_dict.get("web_search", [])
+market_tools = skills_dict.get("market_intelligence", []) + skills_dict.get(
+    "web_search", []
+)
 
 market_agent = Agent(
     name="market_agent",

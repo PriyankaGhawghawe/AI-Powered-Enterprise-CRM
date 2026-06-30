@@ -14,12 +14,25 @@ def get_compliance_status(tool_context: ToolContext) -> dict:
     # Enforce JIT Agent-Scoped Downscoping
     caller = tool_context.state.get("active_agent") or "ceo_agent"
     if "compliance" not in caller and "ceo" not in caller and "cron" not in caller:
-        raise PermissionError(f"Access Denied: Agent '{caller}' is not authorized to access compliance status (requires Compliance Officer role).")
+        raise PermissionError(
+            f"Access Denied: Agent '{caller}' is not authorized to access compliance status (requires Compliance Officer role)."
+        )
 
     db = SessionLocal()
     try:
-        checklist = [{"item": c.item, "status": c.status} for c in db.query(ComplianceChecklist).all()]
-        risks = [{"risk_area": r.risk_area, "description": r.description, "severity": r.severity, "mitigation": r.mitigation or ""} for r in db.query(RegulatoryRisk).all()]
+        checklist = [
+            {"item": c.item, "status": c.status}
+            for c in db.query(ComplianceChecklist).all()
+        ]
+        risks = [
+            {
+                "risk_area": r.risk_area,
+                "description": r.description,
+                "severity": r.severity,
+                "mitigation": r.mitigation or "",
+            }
+            for r in db.query(RegulatoryRisk).all()
+        ]
 
         completed = sum(1 for item in checklist if item["status"] == "Completed")
         total = len(checklist)

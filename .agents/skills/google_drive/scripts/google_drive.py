@@ -16,6 +16,7 @@ def export_report_to_drive(
         report_content: Contents of the report to upload.
     """
     import os
+
     role = tool_context.state.get("user_role", "Employee")
 
     # RBAC Enforcement
@@ -33,7 +34,10 @@ def export_report_to_drive(
         }
 
     # Write to local outbox
-    base_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "../../app/outbox/drive_exports")
+    base_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "../../app/outbox/drive_exports",
+    )
     os.makedirs(base_dir, exist_ok=True)
     file_path = os.path.join(base_dir, filename)
 
@@ -54,9 +58,9 @@ def export_report_to_drive(
         "drive_url": f"file://{file_path}",
     }
 
+
 def export_report_to_drive_needs_confirmation(
     filename: str, report_content: str, tool_context: ToolContext
 ) -> bool:
     role = tool_context.state.get("user_role", "Employee")
     return role == "Owner"
-

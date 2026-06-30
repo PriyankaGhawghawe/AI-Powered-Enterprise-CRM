@@ -61,9 +61,13 @@ def load_skills(skills_dir: str = ".agents/skills") -> dict[str, list[FunctionTo
                         if callable(attr) and hasattr(attr, "__code__"):
                             # Simple heuristic: if it takes ToolContext, it's our tool
                             if "tool_context" in attr.__code__.co_varnames:
-                                conf_hook = getattr(module, f"{attr_name}_needs_confirmation", None)
+                                conf_hook = getattr(
+                                    module, f"{attr_name}_needs_confirmation", None
+                                )
                                 if conf_hook:
-                                    tool = FunctionTool(attr, require_confirmation=conf_hook)
+                                    tool = FunctionTool(
+                                        attr, require_confirmation=conf_hook
+                                    )
                                 else:
                                     tool = FunctionTool(attr)
                                 tools.append(tool)

@@ -27,29 +27,36 @@ class TraceMiner:
         corrections = []
         for t in traces:
             correction = t.get("user_correction", "Unknown")
-            tools_used = [step["name"] for step in t.get("trace", []) if step.get("type") == "tool_call"]
-            corrections.append(f"User Correction: '{correction}' | Tools Used: {tools_used}")
+            tools_used = [
+                step["name"]
+                for step in t.get("trace", [])
+                if step.get("type") == "tool_call"
+            ]
+            corrections.append(
+                f"User Correction: '{correction}' | Tools Used: {tools_used}"
+            )
 
         prompt = (
             "You are a Senior AI Architect evaluating failed agent interactions.\n"
             "Here is a list of user corrections and the tools the agent tried to use before failing:\n"
-            + "\n".join([f"- {c}" for c in corrections]) +
-            "\n\nPlease cluster these failures into 1-3 distinct systemic failure modes or missing skills. "
+            + "\n".join([f"- {c}" for c in corrections])
+            + "\n\nPlease cluster these failures into 1-3 distinct systemic failure modes or missing skills. "
             "Respond with a markdown summary of the clusters, and recommend what new skills should be built to resolve them."
         )
 
         try:
             from google.genai import Client
+
             client = Client()
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
+                model="gemini-2.5-flash", contents=prompt
             )
             print("=== TRACE CLUSTERING REPORT ===")
             print(response.text)
             print("===============================")
         except Exception as e:
             print(f"Error during trace clustering: {e}")
+
 
 if __name__ == "__main__":
     TraceMiner.cluster_failures()

@@ -7,6 +7,7 @@ class AgentBehaviouralAnalytics:
     ABA Engine: Monitors the active Agent Bill of Materials (AgBOM).
     Detects abnormal spikes in tool invocation (e.g., prompt injection or runaway hallucination loops).
     """
+
     def __init__(self, time_window_seconds: int = 60, max_calls: int = 20):
         self.time_window_seconds = time_window_seconds
         self.max_calls = max_calls
@@ -17,7 +18,7 @@ class AgentBehaviouralAnalytics:
 
     def record_tool_call(self, session_id: str, tool_name: str) -> bool:
         """
-        Records a tool call. 
+        Records a tool call.
         Returns True if the session has violated the threshold and should be quarantined.
         """
         if session_id in self.quarantined_sessions:
@@ -37,6 +38,7 @@ class AgentBehaviouralAnalytics:
             return True
 
         return False
+
 
 # Global ABA instance with a strict threshold for demonstration
 aba_engine = AgentBehaviouralAnalytics(time_window_seconds=60, max_calls=15)

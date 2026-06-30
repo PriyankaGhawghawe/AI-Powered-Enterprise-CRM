@@ -18,6 +18,7 @@ def draft_email_update(
     """
     import os
     from datetime import datetime
+
     role = tool_context.state.get("user_role", "Employee")
 
     # RBAC Enforcement
@@ -35,7 +36,10 @@ def draft_email_update(
         }
 
     # Write to local outbox
-    base_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "../../app/outbox/emails")
+    base_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "../../app/outbox/emails",
+    )
     os.makedirs(base_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -49,11 +53,24 @@ Date: {datetime.now().isoformat()}
 
 {body}"""
 
-    try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(email_content)
-    except Exception:
-        pass
+    bucket_name = os.environ.get("GCS_BUCKET_NAME")
+
+    if bucket_name:
+        try:
+            from google.cloud import storage
+
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(f"outbox/{filename}")
+            blob.upload_from_string(email_content)
+        except Exception:
+            pass
+    else:
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(email_content)
+        except Exception:
+            pass
 
     # Audit log
     log_action(
@@ -70,9 +87,9 @@ Date: {datetime.now().isoformat()}
         "details": {"recipient": recipient, "subject": subject, "body": body},
     }
 
+
 def draft_email_update_needs_confirmation(
     recipient: str, subject: str, body: str, tool_context: ToolContext
 ) -> bool:
     role = tool_context.state.get("user_role", "Employee")
     return role in ["Owner", "Manager"]
-

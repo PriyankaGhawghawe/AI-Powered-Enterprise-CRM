@@ -9,6 +9,7 @@ from mcp.server.stdio import stdio_server
 
 server = Server("gmail-mcp")
 
+
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
     return [
@@ -18,14 +19,24 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "recipient": {"type": "string", "description": "Target recipient email address."},
-                    "subject": {"type": "string", "description": "Subject line of the email."},
-                    "body": {"type": "string", "description": "Body content of the email."}
+                    "recipient": {
+                        "type": "string",
+                        "description": "Target recipient email address.",
+                    },
+                    "subject": {
+                        "type": "string",
+                        "description": "Subject line of the email.",
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Body content of the email.",
+                    },
                 },
-                "required": ["recipient", "subject", "body"]
-            }
+                "required": ["recipient", "subject", "body"],
+            },
         )
     ]
+
 
 @server.call_tool()
 async def handle_call_tool(
@@ -36,7 +47,11 @@ async def handle_call_tool(
         subject = arguments.get("subject")
         body = arguments.get("body")
 
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/outbox/emails"))
+        base_dir = os.path.abspath(
+            os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "app/outbox/emails"
+            )
+        )
         os.makedirs(base_dir, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -49,11 +64,17 @@ async def handle_call_tool(
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(email_content)
-            return [types.TextContent(type="text", text=f"Success: Email saved to outbox/emails/{filename}")]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Success: Email saved to outbox/emails/{filename}",
+                )
+            ]
         except Exception as e:
             return [types.TextContent(type="text", text=f"Error writing email: {e!s}")]
     else:
         raise ValueError(f"Unknown tool: {name}")
+
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
@@ -69,6 +90,7 @@ async def main():
                 ),
             ),
         )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

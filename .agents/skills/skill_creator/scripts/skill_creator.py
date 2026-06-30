@@ -5,9 +5,11 @@ from google.adk.tools import ToolContext
 from app.utils.audit import log_action
 
 
-def scaffold_new_skill(skill_name: str, description: str, python_code: str, tool_context: ToolContext) -> dict:
+def scaffold_new_skill(
+    skill_name: str, description: str, python_code: str, tool_context: ToolContext
+) -> dict:
     """Creates a new agent skill dynamically.
-    
+
     Args:
         skill_name: The name of the new skill (snake_case).
         description: A brief description of what the skill does.
@@ -17,7 +19,11 @@ def scaffold_new_skill(skill_name: str, description: str, python_code: str, tool
     if role not in ["Owner", "Manager", "SystemAdmin"]:
         return {"status": "error", "message": "Unauthorized to create new skills."}
 
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), skill_name))
+    base_dir = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), skill_name
+        )
+    )
     if os.path.exists(base_dir):
         return {"status": "error", "message": f"Skill {skill_name} already exists."}
 
@@ -34,5 +40,8 @@ def scaffold_new_skill(skill_name: str, description: str, python_code: str, tool
     log_action(role, f"Created new skill: {skill_name}", "Skill Creator", "Success")
     return {"status": "success", "message": f"Successfully created skill {skill_name}."}
 
-def scaffold_new_skill_needs_confirmation(skill_name: str, description: str, python_code: str, tool_context: ToolContext) -> bool:
+
+def scaffold_new_skill_needs_confirmation(
+    skill_name: str, description: str, python_code: str, tool_context: ToolContext
+) -> bool:
     return True

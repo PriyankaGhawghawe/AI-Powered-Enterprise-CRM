@@ -34,11 +34,13 @@ skills_dict = load_skills()
 # Standardized MCP Connections
 # mcp_file_system = McpToolset(command="uv", args=["run", "mcp_servers/file_system_mcp.py"])
 
+
 def email_needs_confirmation(
     tool_name: str, arguments: dict, tool_context: ToolContext
 ) -> bool:
     role = tool_context.state.get("user_role", "Employee")
     return role in ["Owner", "Manager"]
+
 
 # mcp_gmail = McpToolset(
 #     command="uv",
@@ -53,7 +55,11 @@ cfo_tools = skills_dict.get("financial_summary", []) + file_system_tools
 sales_tools = skills_dict.get("sales_pipeline", []) + file_system_tools
 compliance_tools = skills_dict.get("compliance_status", []) + file_system_tools
 market_tools = skills_dict.get("market_research", []) + file_system_tools
-ceo_tools = skills_dict.get("google_drive", []) + file_system_tools + skills_dict.get("skill_creator", [])
+ceo_tools = (
+    skills_dict.get("google_drive", [])
+    + file_system_tools
+    + skills_dict.get("skill_creator", [])
+)
 
 
 # Define CFO Agent
@@ -145,7 +151,7 @@ ceo_agent = Agent(
 app = App(
     name="business_os_agents",
     root_agent=ceo_agent,
-    resumability_config=ResumabilityConfig(is_resumable=True)
+    resumability_config=ResumabilityConfig(is_resumable=True),
 )
 
 root_agent = ceo_agent

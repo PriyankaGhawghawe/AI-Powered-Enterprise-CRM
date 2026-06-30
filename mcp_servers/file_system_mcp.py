@@ -9,6 +9,7 @@ from mcp.server.stdio import stdio_server
 # Create the MCP Server
 server = Server("file-system-mcp")
 
+
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
     """List available tools."""
@@ -19,10 +20,13 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "filename": {"type": "string", "description": "Name of the file to read."}
+                    "filename": {
+                        "type": "string",
+                        "description": "Name of the file to read.",
+                    }
                 },
-                "required": ["filename"]
-            }
+                "required": ["filename"],
+            },
         ),
         types.Tool(
             name="write_document",
@@ -30,13 +34,20 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "filename": {"type": "string", "description": "Name of the document file to save."},
-                    "content": {"type": "string", "description": "The text content to write to the file."}
+                    "filename": {
+                        "type": "string",
+                        "description": "Name of the document file to save.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The text content to write to the file.",
+                    },
                 },
-                "required": ["filename", "content"]
-            }
-        )
+                "required": ["filename", "content"],
+            },
+        ),
     ]
+
 
 @server.call_tool()
 async def handle_call_tool(
@@ -44,7 +55,9 @@ async def handle_call_tool(
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     """Handle tool execution requests."""
 
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/reports"))
+    base_dir = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/reports")
+    )
     os.makedirs(base_dir, exist_ok=True)
 
     if name == "read_report":
@@ -56,10 +69,18 @@ async def handle_call_tool(
 
         # Sandbox Egress Guard
         if not file_path.startswith(base_dir):
-            return [types.TextContent(type="text", text="Error: Access Denied. Path traversal detected.")]
+            return [
+                types.TextContent(
+                    type="text", text="Error: Access Denied. Path traversal detected."
+                )
+            ]
 
         if not os.path.exists(file_path):
-            return [types.TextContent(type="text", text=f"Error: File '{filename}' does not exist.")]
+            return [
+                types.TextContent(
+                    type="text", text=f"Error: File '{filename}' does not exist."
+                )
+            ]
 
         with open(file_path, encoding="utf-8") as f:
             content = f.read()
@@ -76,20 +97,43 @@ async def handle_call_tool(
 
         # Sandbox Egress Guard
         if not file_path.startswith(base_dir):
-            return [types.TextContent(type="text", text="Error: Access Denied. Path traversal detected.")]
+            return [
+                types.TextContent(
+                    type="text", text="Error: Access Denied. Path traversal detected."
+                )
+            ]
 
         # Supply Chain / Ingestion Defense
-        unsafe_keywords = ["import ", "eval(", "exec(", "subprocess", "os.system", "shutil", "__import__"]
+        unsafe_keywords = [
+            "import ",
+            "eval(",
+            "exec(",
+            "subprocess",
+            "os.system",
+            "shutil",
+            "__import__",
+        ]
         if any(keyword in content for keyword in unsafe_keywords):
-            return [types.TextContent(type="text", text="Error: Access Denied. Malicious dynamic code patterns detected.")]
+            return [
+                types.TextContent(
+                    type="text",
+                    text="Error: Access Denied. Malicious dynamic code patterns detected.",
+                )
+            ]
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        return [types.TextContent(type="text", text=f"Success: Wrote {len(content)} characters to {filename}.")]
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Success: Wrote {len(content)} characters to {filename}.",
+            )
+        ]
 
     else:
         raise ValueError(f"Unknown tool: {name}")
+
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
@@ -105,6 +149,7 @@ async def main():
                 ),
             ),
         )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

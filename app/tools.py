@@ -1,4 +1,3 @@
-
 from app.database import SessionLocal
 from app.models import BusinessState
 
@@ -21,6 +20,7 @@ def _load_db() -> dict:
     finally:
         db.close()
 
+
 def _save_db(data: dict) -> None:
     """Helper to save to the mock database in SQLite."""
     db = SessionLocal()
@@ -40,12 +40,3 @@ def _save_db(data: dict) -> None:
 
 
 # --- Core Business Data Tools ---
-
-
-
-
-
-
-
-
-
