@@ -138,7 +138,7 @@ A dedicated generative AI workspace for high-stakes strategic debates. Pose ques
 Type business questions in plain English (e.g., *"Show me all deals worth over $50K in the Negotiation stage"*). The system uses Gemini to generate SQL, executes it against your live database, and can even auto-generate Chart.js visualizations of the results.
 
 ### 4. Database Explorer
-A live, spreadsheet-like interface for directly viewing and editing core business entities — Sales Deals, Competitors, Compliance Checklists, Regulatory Risks, and Historical Performance data. Supports inline editing, adding/deleting rows, and real-time persistence.
+A live interface for directly viewing and managing core business entities — Sales Deals, Competitors, Compliance Checklists, Regulatory Risks, and Historical Performance data. Supports adding, editing, and deleting records via dedicated modals with role-based restrictions (e.g., only Owners can modify Deals, while Employees have read-only access), and real-time persistence.
 
 ### 5. Integrations Hub
 Configure and sync third-party tools (Stripe, Salesforce, Jira, Slack, HubSpot) with secure, **AES-256 encrypted** API key storage. Features a real-time MCP sync simulation with streaming server-sent events.
@@ -148,6 +148,9 @@ Auto-generated daily briefings compiled from pinned analytics charts. Users can 
 
 ### 7. Compliance & Risk Management
 Interactive GDPR compliance checklists, regulatory risk registries with severity ratings, and a real-time compliance score. The Compliance Agent can assess gaps and recommend mitigation protocols.
+
+### 8. Automated Reporting
+A background scheduler runs daily at 9:00 AM, triggering the AI agents to autonomously analyze the latest financial summaries and sales pipelines, generating a concise executive report (`weekly_cron_summary.md`) without any human intervention.
 
 ---
 
