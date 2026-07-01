@@ -140,6 +140,7 @@ We employ a complete "quality flywheel" to ensure vibe-coded implementations sca
 |---|---|
 | **Frontend** | React 19, Vite 8, Tailwind CSS, Chart.js (A2UI) |
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy, Uvicorn |
+| **Database** | Neon PostgreSQL (Production), SQLite (Local Fallback) |
 | **AI / Agents** | Google ADK, Gemini 2.5 Flash, MCP |
 | **Security** | PyJWT (HS256), passlib (bcrypt), Cryptographic MFA, ABA |
 | **Observability/Eval**| Trace Miner, Trajectory Evaluator (`IN_ORDER`/`EXACT`) |
@@ -159,7 +160,15 @@ git clone https://github.com/PriyankaGhawghawe/AI-Powered-Enterprise-CRM.git
 cd AI-Powered-Enterprise-CRM
 ```
 
-### 2. Backend Setup
+### 2. Database Configuration
+By default, the application runs using a local SQLite database (`business_os.db`). To connect to a production instance (e.g., Neon PostgreSQL):
+1. Create a `.env` file in the root directory.
+2. Add your database connection string:
+   ```env
+   DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+   ```
+
+### 3. Backend Setup
 ```bash
 # Install Python dependencies
 uv sync
@@ -168,7 +177,7 @@ uv sync
 uv run uvicorn app.fast_api_app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Frontend Setup
+### 4. Frontend Setup
 ```bash
 cd frontend-react
 
