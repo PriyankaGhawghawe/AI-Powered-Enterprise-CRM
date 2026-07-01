@@ -212,10 +212,7 @@ docker-compose up --build -d
 
 ## 📄 License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 This project was built as part of the Google AI Agents Hackathon using the Google Agent Development Kit (ADK).
 
----
-
-<p align="center">
-  Built with ❤️ using <strong>Google ADK</strong>, <strong>Gemini 2.5 Flash</strong>, <strong>React</strong>, and <strong>FastAPI</strong>
-</p>
