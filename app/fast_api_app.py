@@ -1265,15 +1265,15 @@ async def generate_sql(
     if token_data.get("role") not in ["Owner", "Manager", "Employee"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     import os
+    from google import genai
 
-    import google.generativeai as genai
-
+    # Ensure Vertex AI mode is active if no API key is specified or if Vertex AI is explicitly forced
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    if api_key and os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") != "True":
+        client = genai.Client(api_key=api_key)
+    else:
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "businessosproj")
+        client = genai.Client(vertexai=True, project=project_id, location="us-central1")
 
     schema_prompt = """
     You are an expert SQL assistant for BusinessOS. You will generate valid SQLite queries based on the user's natural language request.
@@ -1296,8 +1296,9 @@ async def generate_sql(
     """
 
     try:
-        response = await model.generate_content_async(
-            [schema_prompt, f"User Request: {req.query}"]
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[schema_prompt, f"User Request: {req.query}"]
         )
         sql_query = response.text.strip().strip("`").strip("sql").strip()
         return {"sql": sql_query}
@@ -1336,15 +1337,15 @@ async def visualize_sql(
 
     import json
     import os
+    from google import genai
 
-    import google.generativeai as genai
-
+    # Ensure Vertex AI mode is active if no API key is specified or if Vertex AI is explicitly forced
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    if api_key and os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") != "True":
+        client = genai.Client(api_key=api_key)
+    else:
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "businessosproj")
+        client = genai.Client(vertexai=True, project=project_id, location="us-central1")
 
     prompt = f"""
     You are a data visualization expert. I will provide you with the columns and a sample of rows from a SQL query result.
@@ -1368,7 +1369,10 @@ async def visualize_sql(
     """
 
     try:
-        response = await model.generate_content_async(prompt)
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
         text = response.text.strip()
         if text.startswith("```json"):
             text = text[7:-3].strip()
