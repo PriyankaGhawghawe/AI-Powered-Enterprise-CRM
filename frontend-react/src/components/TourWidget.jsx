@@ -4,6 +4,8 @@ import { FaCirclePlay, FaXmark } from 'react-icons/fa6';
 const tourSteps = [
   { target: '.tour-step-role', text: 'Your active role determines your feature permissions and system capabilities.' },
   { target: '.tour-step-kpis', text: 'High-level executive metrics. The Database tab edits will instantly update the Cash Balance here.' },
+  { target: '.tour-step-navigation', text: 'Use the navigation links to switch between Briefings, the Strategic War Room, Analytics, and Deal Records.' },
+  { target: '.tour-step-pdf', text: 'Export a comprehensive PDF Executive Briefing of your company data instantly.' },
   { target: '.tour-step-chat', text: 'Chat with the Executive AI team. Test prompt templates or ask for summaries.' }
 ];
 
