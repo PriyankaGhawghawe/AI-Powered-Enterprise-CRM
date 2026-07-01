@@ -188,14 +188,17 @@ npm install
 npm run dev
 ```
 
-### Default Accounts
+### 🛡️ Development Seed Accounts
+
+> [!WARNING]
+> The accounts listed below are default seed credentials intended **only** for local sandbox development and testing. They should never be used or exposed in public production deployments. 
+> On first login, the platform's authentication gateway enforces a **Just-In-Time Mandatory Password Reset** to secure the session.
+
 | Username | Password | Role |
 |----------|----------|------|
 | `admin` | `admin` | Owner (full access) |
 | `manager` | `manager` | Manager (limited admin) |
 | `employee` | `employee` | Employee (restricted) |
-
-> ⚠️ **Note:** On first login with these default accounts, you will be prompted to reset your password.
 
 ---
 
