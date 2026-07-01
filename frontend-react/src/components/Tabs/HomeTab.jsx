@@ -197,7 +197,7 @@ const HomeTab = ({ setActiveTab }) => {
       </div>
 
       {/* Top KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="tour-step-kpis grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm flex flex-col justify-center transition-transform hover:-translate-y-1 group">
           <div className="flex justify-between items-start mb-2">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cash Balance</p>

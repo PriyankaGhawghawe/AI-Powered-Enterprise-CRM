@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaCirclePlay, FaXmark } from 'react-icons/fa6';
 
 const tourSteps = [
-  { target: '.tour-step-role', text: 'Select your active role to see role-based access control in action.' },
+  { target: '.tour-step-role', text: 'Your active role determines your feature permissions and system capabilities.' },
   { target: '.tour-step-kpis', text: 'High-level executive metrics. The Database tab edits will instantly update the Cash Balance here.' },
   { target: '.tour-step-chat', text: 'Chat with the Executive AI team. Test prompt templates or ask for summaries.' }
 ];

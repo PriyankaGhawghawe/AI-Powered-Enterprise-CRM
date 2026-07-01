@@ -32,7 +32,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           </div>
           Business OS
         </h1>
-        <div className="flex items-center gap-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
+        <div className="tour-step-role flex items-center gap-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
           <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
             <FaUserShield />
           </div>
