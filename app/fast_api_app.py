@@ -19,6 +19,10 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
+# Force Google Cloud client libraries to target the correct project
+if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "businessosproj"
+
 import datetime
 
 import google.auth
@@ -1446,16 +1450,16 @@ async def warroom_debate(
             detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity.",
         )
     import json
-
-    import google.generativeai as genai
+    from google import genai
     from fastapi.responses import StreamingResponse
 
+    # Ensure Vertex AI mode is active if no API key is specified or if Vertex AI is explicitly forced
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    if api_key and os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") != "True":
+        client = genai.Client(api_key=api_key)
+    else:
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "businessosproj")
+        client = genai.Client(vertexai=True, project=project_id, location="us-central1")
 
     async def generate_debate():
         yield f"data: {json.dumps({'agent': 'system', 'content': 'Starting War Room Session...'})}\n\n"
@@ -1464,36 +1468,39 @@ async def warroom_debate(
         # Financial Analyst
         yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': 'Analyzing financial implications...'})}\n\n"
         try:
-            fin_response = await model.generate_content_async(
-                f"You are a strict Financial Analyst. The user asks: {req.query}. Give a concise 2-sentence financial perspective."
+            fin_response = await client.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=f"You are a strict Financial Analyst. The user asks: {req.query}. Give a concise 2-sentence financial perspective."
             )
             yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': fin_response.text.strip()})}\n\n"
+            fin_text = fin_response.text.strip()
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'Financial Analyst', 'content': f'Error analyzing data: {e!r}'})}\n\n"
-            fin_response = None
+            fin_text = "No financial data."
 
         await asyncio.sleep(1)
 
         # VP of Sales
         yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': 'Reviewing sales pipeline impact...'})}\n\n"
         try:
-            sales_response = await model.generate_content_async(
-                f"You are an aggressive VP of Sales. The user asks: {req.query}. Give a concise 2-sentence sales perspective."
+            sales_response = await client.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=f"You are an aggressive VP of Sales. The user asks: {req.query}. Give a concise 2-sentence sales perspective."
             )
             yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': sales_response.text.strip()})}\n\n"
+            sales_text = sales_response.text.strip()
         except Exception as e:
             yield f"data: {json.dumps({'agent': 'VP of Sales', 'content': f'Error analyzing data: {e!r}'})}\n\n"
-            sales_response = None
+            sales_text = "No sales data."
 
         await asyncio.sleep(1)
 
         # Synthesizer
         yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': 'Synthesizing final executive summary...'})}\n\n"
         try:
-            fin_text = fin_response.text if fin_response else "No financial data."
-            sales_text = sales_response.text if sales_response else "No sales data."
-            synth_response = await model.generate_content_async(
-                f"Synthesize these perspectives into a final 2-sentence executive summary. Financial: {fin_text}, Sales: {sales_text}. User Query: {req.query}"
+            synth_response = await client.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=f"Synthesize these perspectives into a final 2-sentence executive summary. Financial: {fin_text}, Sales: {sales_text}. User Query: {req.query}"
             )
             yield f"data: {json.dumps({'agent': 'Synthesizer', 'content': synth_response.text.strip()})}\n\n"
         except Exception as e:
