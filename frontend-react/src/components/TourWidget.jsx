@@ -14,6 +14,38 @@ const TourWidget = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
 
+  const getTooltipStyle = () => {
+    if (!targetRect) return {};
+    
+    const tooltipWidth = 288; // w-72 is 18rem = 288px
+    const tooltipHeight = 160; // approximate height
+    
+    // Check if target is on the far left (e.g. sidebar)
+    if (targetRect.left + targetRect.width <= 320) {
+      return {
+        left: targetRect.left + targetRect.width + 20,
+        top: Math.max(20, Math.min(window.innerHeight - tooltipHeight - 20, targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)))
+      };
+    }
+    
+    // Check if target is on the far right (e.g. chat widget)
+    if (targetRect.left >= window.innerWidth - 320) {
+      return {
+        left: targetRect.left - tooltipWidth - 20,
+        top: Math.max(20, Math.min(window.innerHeight - tooltipHeight - 20, targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)))
+      };
+    }
+    
+    // Default: Top or Bottom placement
+    const fitsBelow = targetRect.top + targetRect.height + 20 + tooltipHeight < window.innerHeight;
+    return {
+      left: Math.max(20, Math.min(window.innerWidth - tooltipWidth - 20, targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2))),
+      top: fitsBelow 
+        ? targetRect.top + targetRect.height + 20 
+        : targetRect.top - tooltipHeight - 20
+    };
+  };
+
   useEffect(() => {
     if (!isActive) {
       setTargetRect(null);
@@ -102,12 +134,7 @@ const TourWidget = () => {
           {targetRect && (
             <div 
               className="absolute bg-white dark:bg-slate-800 p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-72 pointer-events-auto transition-all duration-500"
-              style={{
-                top: targetRect.top + targetRect.height + 20 + 200 > window.innerHeight 
-                     ? targetRect.top - 180 
-                     : targetRect.top + targetRect.height + 20,
-                left: Math.max(20, Math.min(window.innerWidth - 300, targetRect.left + (targetRect.width / 2) - 144))
-              }}
+              style={getTooltipStyle()}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Step {currentStep + 1} of {tourSteps.length}</span>
