@@ -92,7 +92,7 @@ const ExecutiveReportPDF = ({ businessData, activeRole, theme }) => {
   const isDark = theme === 'dark';
 
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const activeDeals = businessData.sales_pipeline?.deals?.filter(d => !d.stage.includes('Closed')) || [];
+  const activeDeals = businessData.sales_pipeline?.deals?.filter(d => !d.stage?.includes('Closed')) || [];
   const totalPipeline = activeDeals.reduce((sum, d) => sum + (d.value || 0), 0);
 
   return (

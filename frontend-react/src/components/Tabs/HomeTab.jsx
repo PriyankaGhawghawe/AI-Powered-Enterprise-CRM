@@ -204,9 +204,9 @@ const HomeTab = ({ setActiveTab }) => {
             <FaMoneyBillTrendUp className="text-emerald-500" />
           </div>
           <div className="flex items-center justify-between mt-2">
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">${businessData.financials.cash_balance.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">${(businessData.financials?.cash_balance ?? 0).toLocaleString()}</p>
             <div className="opacity-70 group-hover:opacity-100 transition-opacity">
-              <Sparkline data={businessData.financials.historical_performance.map(h => h.revenue - h.expenses + 350000)} color="#10b981" />
+              <Sparkline data={(businessData.financials?.historical_performance ?? []).map(h => (h.revenue ?? 0) - (h.expenses ?? 0) + 350000)} color="#10b981" />
             </div>
           </div>
         </div>
@@ -219,9 +219,10 @@ const HomeTab = ({ setActiveTab }) => {
           <div className="flex items-center justify-between mt-2">
             <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
               {(() => {
-                const expenses = Object.values(businessData.financials.expenses).reduce((a, b) => a + b, 0);
-                const burn = expenses - businessData.financials.monthly_mrr;
-                return burn <= 0 ? "Infinite" : `${(businessData.financials.cash_balance / burn).toFixed(1)}m`;
+                const expensesObj = businessData.financials?.expenses ?? {};
+                const expenses = Object.values(expensesObj).reduce((a, b) => a + b, 0);
+                const burn = expenses - (businessData.financials?.monthly_mrr ?? 0);
+                return burn <= 0 ? "Infinite" : `${((businessData.financials?.cash_balance ?? 0) / burn).toFixed(1)}m`;
               })()}
             </p>
             <div className="opacity-70 group-hover:opacity-100 transition-opacity">
@@ -237,7 +238,7 @@ const HomeTab = ({ setActiveTab }) => {
           </div>
           <div className="mt-2">
             <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              ${businessData.sales_pipeline.deals.filter(d => !d.stage.includes('Closed')).reduce((a, b) => a + b.value, 0).toLocaleString()}
+              ${(businessData.sales_pipeline?.deals ?? []).filter(d => !d.stage?.includes('Closed')).reduce((a, b) => a + (b.value ?? 0), 0).toLocaleString()}
             </p>
           </div>
         </div>
@@ -249,12 +250,22 @@ const HomeTab = ({ setActiveTab }) => {
           </div>
           <div className="mt-2 flex items-center gap-3">
             <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              {Math.round((businessData.compliance.checklist.filter(c => c.status === "Completed").length / businessData.compliance.checklist.length) * 100)}%
+              {(() => {
+                const list = businessData.compliance?.checklist ?? [];
+                if (list.length === 0) return "0%";
+                return `${Math.round((list.filter(c => c.status === "Completed").length / list.length) * 100)}%`;
+              })()}
             </p>
             <div className="flex-1 bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
               <div
                 className="bg-purple-500 h-full rounded-full transition-all duration-1000"
-                style={{ width: `${Math.round((businessData.compliance.checklist.filter(c => c.status === "Completed").length / businessData.compliance.checklist.length) * 100)}%` }}
+                style={{
+                  width: (() => {
+                    const list = businessData.compliance?.checklist ?? [];
+                    if (list.length === 0) return "0%";
+                    return `${Math.round((list.filter(c => c.status === "Completed").length / list.length) * 100)}%`;
+                  })()
+                }}
               ></div>
             </div>
           </div>

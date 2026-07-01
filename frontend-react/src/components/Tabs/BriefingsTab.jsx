@@ -165,17 +165,17 @@ const BriefingsTab = () => {
             {businessData ? (
               <div className="space-y-4">
                 {businessData.sales_pipeline?.deals
-                  ?.filter(d => !d.stage.includes('Closed'))
+                  ?.filter(d => !d.stage?.includes('Closed'))
                   ?.sort((a, b) => b.value - a.value)
                   ?.slice(0, 3)
                   .map((deal, i) => (
                     <div key={i} className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700 last:border-0 last:pb-0">
                       <div>
-                        <span className="font-bold text-slate-900 dark:text-white block">{deal.client}</span>
+                        <span className="font-bold text-slate-900 dark:text-white block">{deal.name || deal.client}</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">{deal.stage}</span>
                       </div>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        ${deal.value.toLocaleString()}
+                        ${(deal.value ?? 0).toLocaleString()}
                       </span>
                     </div>
                 ))}
@@ -197,10 +197,10 @@ const BriefingsTab = () => {
                     <span><strong>{risk.risk_area}:</strong> {risk.description}</span>
                   </li>
                 ))}
-                {businessData.sales_pipeline?.deals?.filter(d => d.value > 50000 && !d.stage.includes('Closed')).slice(0, 1).map((deal, i) => (
+                {businessData.sales_pipeline?.deals?.filter(d => d.value > 50000 && !d.stage?.includes('Closed')).slice(0, 1).map((deal, i) => (
                   <li key={`deal-${i}`} className="flex gap-3 text-sm text-amber-700 dark:text-amber-400">
                     <span className="mt-0.5">•</span>
-                    <span><strong>High Value Deal:</strong> {deal.client} is stuck in {deal.stage}. Requires executive sponsor.</span>
+                    <span><strong>High Value Deal:</strong> {deal.name || deal.client} is stuck in {deal.stage}. Requires executive sponsor.</span>
                   </li>
                 ))}
               </ul>

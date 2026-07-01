@@ -45,7 +45,7 @@ const DatabaseTab = () => {
   const deals = draftData.sales_pipeline?.deals || [];
   
   // KPI Calculations
-  const activeDeals = deals.filter(d => !d.stage.includes('Closed'));
+  const activeDeals = deals.filter(d => !d.stage?.includes('Closed'));
   const wonDeals = deals.filter(d => d.stage === 'Closed Won');
   
   const totalPipelineValue = activeDeals.reduce((sum, d) => sum + (d.value || 0), 0);
@@ -261,8 +261,8 @@ const DatabaseTab = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {deals.map((deal, idx) => {
-                const isCritical = deal.age_days > 30 && deal.value > 10000 && !deal.stage.includes('Closed');
+               {deals.map((deal, idx) => {
+                const isCritical = deal.age_days > 30 && deal.value > 10000 && !deal.stage?.includes('Closed');
                 const isWon = deal.stage === 'Closed Won';
                 const isLost = deal.stage === 'Closed Lost';
 
