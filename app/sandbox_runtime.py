@@ -14,7 +14,36 @@ def execute_sql_sandboxed(sql: str, db_path: str = "business_os.db"):
     script_path = "ephemeral_sandbox_query.py"
     # Ensure any single quotes in sql are properly escaped for the f-string execution
     safe_sql = sql.replace("'", "''")
-    script_content = f"""
+    
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url and (database_url.startswith("postgresql://") or database_url.startswith("postgres://")):
+        script_content = f"""
+import psycopg2
+import json
+import os
+import sys
+
+try:
+    db_url = os.environ.get("DATABASE_URL")
+    conn = psycopg2.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute('''{safe_sql}''')
+    if cursor.description:
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        data = [dict(zip(columns, r)) for r in rows]
+    else:
+        columns = []
+        data = []
+    print(json.dumps({{"columns": columns, "rows": data}}))
+except Exception as e:
+    print(json.dumps({{"error": str(e)}}))
+finally:
+    if 'conn' in locals() and conn:
+        conn.close()
+"""
+    else:
+        script_content = f"""
 import sqlite3
 import json
 import sys
@@ -31,15 +60,20 @@ try:
 except Exception as e:
     print(json.dumps({{"error": str(e)}}))
 finally:
-    conn.close()
+    if 'conn' in locals() and conn:
+        conn.close()
 """
+
     try:
         with open(script_path, "w", encoding="utf-8") as f:
             f.write(script_content)
 
         # Execute in strict subprocess
-        # Strip all environment variables except PATH to simulate isolation
-        clean_env = {"PATH": os.environ.get("PATH", "")}
+        # Strip all environment variables except PATH and DATABASE_URL to simulate isolation
+        clean_env = {
+            "PATH": os.environ.get("PATH", ""),
+            "DATABASE_URL": os.environ.get("DATABASE_URL", ""),
+        }
 
         result = subprocess.run(
             [sys.executable, script_path],
