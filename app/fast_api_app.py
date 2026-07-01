@@ -54,13 +54,16 @@ Base.metadata.create_all(bind=engine)
 def init_db_data():
     db = SessionLocal()
     try:
+        # Seed default accounts with requires_password_reset=True so that on
+        # EVERY environment (including Cloud Run production), users are forced
+        # to set a personal password before accessing the dashboard.
         if not db.query(User).filter(User.username == "admin").first():
             db.add(
                 User(
                     username="admin",
                     password_hash=get_password_hash("admin"),
                     role="Owner",
-                    requires_password_reset=False,
+                    requires_password_reset=True,
                 )
             )
         if not db.query(User).filter(User.username == "manager").first():
@@ -69,7 +72,7 @@ def init_db_data():
                     username="manager",
                     password_hash=get_password_hash("manager"),
                     role="Manager",
-                    requires_password_reset=False,
+                    requires_password_reset=True,
                 )
             )
         if not db.query(User).filter(User.username == "employee").first():
@@ -78,7 +81,7 @@ def init_db_data():
                     username="employee",
                     password_hash=get_password_hash("employee"),
                     role="Employee",
-                    requires_password_reset=False,
+                    requires_password_reset=True,
                 )
             )
 
