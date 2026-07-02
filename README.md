@@ -134,6 +134,14 @@ We employ a complete "quality flywheel" to ensure vibe-coded implementations sca
 * **Trajectory Evaluation:** Beyond just asserting final outputs, our [`trajectory_evaluator.py`](app/eval/trajectory_evaluator.py) scores execution trajectories using `EXACT` and `IN_ORDER` modes against `.agents/skills/eval_cases.json`.
 * **Trace Mining & Clustering:** The FastAPI backend utilizes a failure sink. User corrections (e.g. "No, that's completely wrong") force a sub-2 satisfaction score, immediately dumping the full AgBOM trace to `failed_traces.jsonl`. Our [`trace_miner.py`](app/eval/trace_miner.py) then clusters these failures with Gemini to identify systematic skill gaps.
 
+### Running Evaluations
+
+To execute the trajectory evaluator against the local test cases, run:
+
+```bash
+uv run python -m app.eval.trajectory_evaluator
+```
+
 ---
 
 ## 🛠 Tech Stack
@@ -162,13 +170,25 @@ git clone https://github.com/PriyankaGhawghawe/AI-Powered-Enterprise-CRM.git
 cd AI-Powered-Enterprise-CRM
 ```
 
-### 2. Database Configuration
-By default, the application runs using a local SQLite database (`business_os.db`). To connect to a production instance (e.g., Neon PostgreSQL):
-1. Create a `.env` file in the root directory.
-2. Add your database connection string:
-   ```env
-   DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
-   ```
+### 2. Environment Variables Configuration
+
+Create a `.env` file in the root directory. To run the application fully locally or against production infrastructure, configure the following variables:
+
+| Environment Variable | Description | Example / Default |
+|----------------------|-------------|-------------------|
+| `DATABASE_URL` | Connection string for PostgreSQL (Neon) or local SQLite. | `postgresql://user:password@host/dbname?sslmode=require` (defaults to local `sqlite:///./business_os.db`) |
+| `SECRET_KEY` | Secret key used for signing JWT authentication tokens. | `super-secret-key-for-business-os` (must override in prod) |
+| `GEMINI_API_KEY` | Your Google Gemini API Key (if not using Vertex AI). | `AIzaSy...` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to your GCP Service Account JSON key (required if using Vertex AI and GCP services). | `./service-account-key.json` |
+| `GOOGLE_CLOUD_PROJECT` | Your Google Cloud Project ID. | `businessosproj` |
+| `GCS_BUCKET_NAME` | Cloud Storage bucket for PDF report generation and artifacts. | `businessos-artifacts-123456` |
+
+**Example `.env`:**
+```env
+DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+SECRET_KEY="your-secure-random-string"
+GEMINI_API_KEY="AIzaSy..."
+```
 
 ### 3. Backend Setup
 ```bash
