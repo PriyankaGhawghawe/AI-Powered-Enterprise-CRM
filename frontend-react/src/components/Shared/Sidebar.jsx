@@ -86,16 +86,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           {theme === 'dark' ? <><FaSun className="text-yellow-400" /> Light Mode</> : <><FaMoon className="text-blue-400" /> Dark Mode</>}
         </button>
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors text-sm font-medium text-slate-400"
-        >
-          <FaArrowRightFromBracket className="text-red-400" /> Sign Out
-        </button>
       </div>
     </div>
   );
 };
 
 export default Sidebar;
-
