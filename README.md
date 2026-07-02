@@ -228,13 +228,24 @@ You can click any role on the login page to instantly auto-fill credentials and 
 
 ## 🐳 Docker Deployment
 
-The entire application is containerized using a **multi-stage Docker build**:
+The entire application is containerized using a **multi-stage Docker build**. The `docker-compose.yml` orchestrates both the React frontend and FastAPI backend into a seamless deployment.
+
+### Running with Docker Compose
+
+Ensure your `.env` file is present in the root directory (as described in the Environment Variables section) before running the containers.
 
 ```bash
+# Build the images from scratch and run them detached in the background
 docker-compose up --build -d
-# Access at http://localhost:8000
 ```
 
+### Ports and Access
+- **Backend API:** Exposed on `http://localhost:8000`. This serves all REST endpoints and handles agent execution.
+- **Frontend App:** If using a multi-container setup, typically exposed on `http://localhost:5173`. Alternatively, if the frontend is built and served as static files via FastAPI, the entire application will be accessible directly on port `8000`.
+
+### Environment Variables Note
+- **Build Time:** Docker does *not* need your database passwords or API keys during the `docker build` phase. It only requires standard dependencies.
+- **Run Time:** The containers will dynamically mount your local `.env` file at runtime. This ensures that sensitive credentials like `GEMINI_API_KEY` and `DATABASE_URL` are never baked into the Docker image itself.
 ---
 
 ## 📄 License
