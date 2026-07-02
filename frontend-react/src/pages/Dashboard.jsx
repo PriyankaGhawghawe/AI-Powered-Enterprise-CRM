@@ -75,6 +75,11 @@ const Dashboard = () => {
     return false;
   };
 
+  const HIDDEN_TABS_ROLE = {
+    Manager:  ['tab-users'],
+    Employee: ['tab-users', 'tab-integrations', 'tab-audit', 'tab-warroom'],
+  };
+
   const renderTabContent = () => {
     if (!isDataLoaded) {
       return (
@@ -82,6 +87,12 @@ const Dashboard = () => {
       );
     }
     
+    // Guard: if this role shouldn't see this tab, silently fall back to Home
+    const hiddenTabs = HIDDEN_TABS_ROLE[activeRole] || [];
+    if (hiddenTabs.includes(activeTab)) {
+      return <HomeTab setActiveTab={setActiveTab} />;
+    }
+
     switch (activeTab) {
       case 'tab-home': return <HomeTab setActiveTab={setActiveTab} />;
       case 'tab-analytics': return <AnalyticsTab token={token} />;

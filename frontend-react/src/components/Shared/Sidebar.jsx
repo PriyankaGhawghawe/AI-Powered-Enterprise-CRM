@@ -6,21 +6,32 @@ import {
   FaHouse, FaMoon, FaSun, FaUserShield, FaArrowRightFromBracket
 } from 'react-icons/fa6';
 
+// Role-based tab access control
+// Owner   → all tabs
+// Manager → no Users tab
+// Employee → no Users, Integrations, Audit Log, War Room tabs
+const HIDDEN_TABS = {
+  Manager:  ['tab-users'],
+  Employee: ['tab-users', 'tab-integrations', 'tab-audit', 'tab-warroom'],
+};
+
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const { activeRole, username, theme, toggleTheme, logout } = useContext(AppContext);
 
   const tabs = [
-    { id: 'tab-home', label: 'Home', icon: <FaHouse /> },
-    { id: 'tab-briefings', label: 'Briefings', icon: <FaBrain /> },
-    { id: 'tab-warroom', label: 'War Room', icon: <FaChessKnight /> },
-    { id: 'tab-analytics', label: 'Analytics', icon: <FaChartPie /> },
-    { id: 'tab-competitors', label: 'Competitors', icon: <FaBinoculars /> },
-    { id: 'tab-compliance', label: 'Compliance', icon: <FaShieldHalved /> },
-    { id: 'tab-database', label: 'Deal Records', icon: <FaHandshake /> },
-    { id: 'tab-audit', label: 'Audit Log', icon: <FaListCheck /> },
-    { id: 'tab-integrations', label: 'Integrations', icon: <FaPlug /> },
-    { id: 'tab-users', label: 'Users', icon: <FaUsers /> }
+    { id: 'tab-home',         label: 'Home',        icon: <FaHouse /> },
+    { id: 'tab-briefings',    label: 'Briefings',   icon: <FaBrain /> },
+    { id: 'tab-warroom',      label: 'War Room',    icon: <FaChessKnight /> },
+    { id: 'tab-analytics',    label: 'Analytics',   icon: <FaChartPie /> },
+    { id: 'tab-competitors',  label: 'Competitors', icon: <FaBinoculars /> },
+    { id: 'tab-compliance',   label: 'Compliance',  icon: <FaShieldHalved /> },
+    { id: 'tab-database',     label: 'Deal Records',icon: <FaHandshake /> },
+    { id: 'tab-audit',        label: 'Audit Log',   icon: <FaListCheck /> },
+    { id: 'tab-integrations', label: 'Integrations',icon: <FaPlug /> },
+    { id: 'tab-users',        label: 'Users',       icon: <FaUsers /> },
   ];
+
+  const hiddenForRole = HIDDEN_TABS[activeRole] || [];
 
   return (
     <div className="w-64 bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 text-slate-300 h-screen flex flex-col flex-shrink-0 transition-all duration-300 relative z-20 shadow-xl">
@@ -47,15 +58,8 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       <div className="tour-step-navigation flex-1 overflow-y-auto py-4 px-3 space-y-1">
         <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Navigation</p>
         {tabs.map((tab) => {
+          if (hiddenForRole.includes(tab.id)) return null;
           const isActive = activeTab === tab.id;
-          
-          // Role-based visibility check for Employees (cannot see Users, Integrations, Audit Log, War Room)
-          if (activeRole === 'Employee') {
-            if (['tab-users', 'tab-integrations', 'tab-audit', 'tab-warroom'].includes(tab.id)) {
-              return null;
-            }
-          }
-
           return (
             <button
               key={tab.id}
@@ -82,9 +86,16 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           {theme === 'dark' ? <><FaSun className="text-yellow-400" /> Light Mode</> : <><FaMoon className="text-blue-400" /> Dark Mode</>}
         </button>
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors text-sm font-medium text-slate-400"
+        >
+          <FaArrowRightFromBracket className="text-red-400" /> Sign Out
+        </button>
       </div>
     </div>
   );
 };
 
 export default Sidebar;
+
