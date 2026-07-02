@@ -6,7 +6,7 @@ import { FaUser, FaLock, FaRightToBracket, FaCircleNotch, FaBrain, FaFlask, FaCh
 
 const DEMO_ACCOUNTS = [
   {
-    label: '👑 Owner — Full Access',
+    label: 'Owner — Full Access',
     username: 'admin',
     password: 'admin',
     role: 'Owner',
@@ -15,7 +15,7 @@ const DEMO_ACCOUNTS = [
     badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   },
   {
-    label: '🛠️ Manager — Limited Admin',
+    label: 'Manager — Limited Admin',
     username: 'manager',
     password: 'manager',
     role: 'Manager',
@@ -24,7 +24,7 @@ const DEMO_ACCOUNTS = [
     badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   },
   {
-    label: '👤 Employee — Restricted',
+    label: 'Employee — Restricted',
     username: 'employee',
     password: 'employee',
     role: 'Employee',
