@@ -269,11 +269,12 @@ docker-compose up --build -d
 
 ## 🚧 Known Limitations & Roadmap
 
-While BusinessOS is highly functional, it is currently a prototype. Honest limitations include:
+While BusinessOS is fully functional, it was initially developed as a prototype for the Google AI Agents Hackathon. Current limitations and planned future enhancements include:
 
-- **Multi-Tenancy:** Currently assumes a single organization. Future versions will support strict multi-tenant data isolation.
-- **Database Fallback:** Uses local SQLite by default for easy setup, but should be run on PostgreSQL (e.g., Neon) for concurrent production workloads.
-- **Tool Breadth:** Agents currently have a fixed set of APIs. We plan to expand the `skill_creator` to allow dynamic OpenAPI spec ingestion.
+- **Multi-Tenancy:** The platform currently assumes a single-tenant organizational structure. Future iterations will implement strict Row-Level Security (RLS) for multi-tenant data isolation.
+- **Agent Context Optimization:** For extremely long-running Strategic War Room debates, we plan to implement semantic compression on the Agentic Bill of Materials (AgBOM) to prevent context-window exhaustion.
+- **Real-Time Streaming:** The chat interface currently relies on standard HTTP requests. We plan to migrate to WebSockets for real-time, token-by-token agent response streaming.
+- **Dynamic Skill Ingestion:** While the `skill_creator` can generate new Python skills, we plan to expand this to allow dynamic ingestion of OpenAPI specs, allowing agents to instantly learn how to interact with new third-party tools on the fly.
 
 ---
 
@@ -288,7 +289,7 @@ Contributions are welcome! Since this is an open-source prototype, feel free to 
 This project was proudly built for the **[Google AI Agents Hackathon](https://googleaia.devpost.com/)** utilizing the Google Agent Development Kit (ADK).
 
 **Creator:** Priyanka Ghawghawe  
-**Connect:** [LinkedIn](https://www.linkedin.com/in/priyankamenghare/)  
+**Connect:** [LinkedIn](https://www.linkedin.com/in/priyankaghawghawe/)  
 
 ---
 
