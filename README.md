@@ -188,17 +188,19 @@ npm install
 npm run dev
 ```
 
-### 🛡️ Development Seed Accounts
+### 🛡️ Development Seed Accounts & RBAC
+
+The platform features a **2-step role picker login flow** for frictionless prototype demonstrations. 
+You can click any role on the login page to instantly auto-fill credentials and sign in.
+
+| Role | Username / Password | Access Level | Tab Visibility |
+|------|---------------------|--------------|----------------|
+| **Owner** | `admin` / `admin` | Full Access | All tabs |
+| **Manager** | `manager` / `manager` | Limited Admin | Cannot view **Users** tab |
+| **Employee** | `employee` / `employee` | Restricted | Cannot view **Users**, **Integrations**, **Audit Log**, or **War Room** |
 
 > [!WARNING]
-> The accounts listed below are default seed credentials intended **only** for local sandbox development and testing. They should never be used or exposed in public production deployments. 
-> On first login, the platform's authentication gateway enforces a **Just-In-Time Mandatory Password Reset** to secure the session.
-
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin` | Owner (full access) |
-| `manager` | `manager` | Manager (limited admin) |
-| `employee` | `employee` | Employee (restricted) |
+> These seed accounts are intended **only** for sandbox development, prototyping, and demonstrations. Production accounts created via the platform enforce a **Just-In-Time Mandatory Password Reset** workflow to secure sessions.
 
 ---
 
