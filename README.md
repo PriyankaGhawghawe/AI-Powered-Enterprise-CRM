@@ -4,6 +4,8 @@
 
 # BusinessOS
 
+*(Repository: **AI-Powered-Enterprise-CRM** — Product Name: **BusinessOS**)*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 ![Node 20](https://img.shields.io/badge/node-20-green.svg)
