@@ -25,11 +25,12 @@ Built with **React + Vite**, **FastAPI**, **Google ADK (Agent Development Kit)**
 - [Advanced Security (7-Pillar Defense)](#-advanced-security-7-pillar-defense)
 - [Evaluation-Driven Development](#-evaluation-driven-development)
 - [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
 - [Setup & Installation](#-setup--installation)
 - [Docker Deployment](#-docker-deployment)
-- [Demo & Screenshots](#-demo--screenshots)
-- [The Build Journey](#-the-build-journey)
+- [Screenshots & UI](#-screenshots--ui)
+- [Known Limitations & Roadmap](#-known-limitations--roadmap)
+- [Contributing](#-contributing)
+- [Acknowledgments & Contact](#-acknowledgments--contact)
 
 ---
 
