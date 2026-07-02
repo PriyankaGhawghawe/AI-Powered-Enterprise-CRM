@@ -1,6 +1,12 @@
-![BusinessOS Hero](frontend-react/src/assets/hero.png)
+<div align="center">
+  <img src="frontend-react/src/assets/hero.png" alt="BusinessOS Hero" width="600" />
+</div>
 
 # BusinessOS
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
+![Node 20](https://img.shields.io/badge/node-20-green.svg)
 
 > **A full-stack, agentic AI CRM platform featuring a team of autonomous AI agents — CEO, CFO, Sales Director, Market Analyst, and Compliance Officer — working collaboratively.**
 
@@ -248,9 +254,45 @@ docker-compose up --build -d
 - **Run Time:** The containers will dynamically mount your local `.env` file at runtime. This ensures that sensitive credentials like `GEMINI_API_KEY` and `DATABASE_URL` are never baked into the Docker image itself.
 ---
 
+## 📸 Screenshots & UI
+
+> **Note:** Here is a preview of the BusinessOS platform.
+
+- **Strategic War Room:**
+  ![Strategic War Room](docs/screenshot_warroom.png)
+- **Dashboard & A2UI Charts:**
+  ![Dashboard](docs/screenshot_dashboard.png)
+- **Database Explorer:**
+  ![Database Explorer](docs/screenshot_database.png)
+
+---
+
+## 🚧 Known Limitations & Roadmap
+
+While BusinessOS is highly functional, it is currently a prototype. Honest limitations include:
+
+- **Multi-Tenancy:** Currently assumes a single organization. Future versions will support strict multi-tenant data isolation.
+- **Database Fallback:** Uses local SQLite by default for easy setup, but should be run on PostgreSQL (e.g., Neon) for concurrent production workloads.
+- **Tool Breadth:** Agents currently have a fixed set of APIs. We plan to expand the `skill_creator` to allow dynamic OpenAPI spec ingestion.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Since this is an open-source prototype, feel free to open an issue or submit a pull request for any enhancements, new agents, or bug fixes.
+
+---
+
+## 🏆 Acknowledgments & Contact
+
+This project was proudly built for the **[Google AI Agents Hackathon](https://googleaia.devpost.com/)** utilizing the Google Agent Development Kit (ADK).
+
+**Creator:** Priyanka Ghawghawe  
+**Connect:** [LinkedIn](https://www.linkedin.com/in/priyankamenghare/)  
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-This project was built as part of the Google AI Agents Hackathon using the Google Agent Development Kit (ADK).
 
