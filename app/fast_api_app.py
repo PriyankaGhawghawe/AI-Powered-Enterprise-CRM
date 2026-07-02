@@ -298,6 +298,22 @@ def reset_password(
     finally:
         db.close()
 
+def log_audit_event(user: str, action: str, target: str, status: str = "Success"):
+    db = SessionLocal()
+    try:
+        new_log = AuditLog(
+            user=user,
+            action=action,
+            target=target,
+            status=status,
+        )
+        db.add(new_log)
+        db.commit()
+    except Exception as e:
+        print(f"Failed to write audit log: {e}")
+    finally:
+        db.close()
+
 
 class AuditLogCreate(BaseModel):
     action: str
@@ -1437,6 +1453,12 @@ def execute_sql(
 
     try:
         result = execute_sql_sandboxed(sql)
+        log_audit_event(
+            user=token_data.get("sub", "Unknown"),
+            action="EXECUTED_NATURAL_LANGUAGE_SQL",
+            target="DB_SANDBOX",
+            status="Success"
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"SQL Execution Error: {e!s}")
@@ -1456,6 +1478,14 @@ async def warroom_debate(
             status_code=403,
             detail="Access Denied: The Strategic War Room is restricted to Owners and Managers due to financial sensitivity.",
         )
+    
+    log_audit_event(
+        user=token_data.get("sub", "Unknown"),
+        action="EXECUTED_WAR_ROOM_SIMULATION",
+        target="CEO_AGENT_ORCHESTRATOR",
+        status="Success"
+    )
+    
     import json
     from google import genai
     from fastapi.responses import StreamingResponse
