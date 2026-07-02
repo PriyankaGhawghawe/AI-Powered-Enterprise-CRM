@@ -1,6 +1,8 @@
-# 🚀 AI-Powered Enterprise CRM
+![BusinessOS Hero](frontend-react/src/assets/hero.png)
 
-> **A full-stack, agentic AI platform that replaces an entire C-suite with a team of autonomous AI agents — a CEO, CFO, Sales Director, Market Analyst, and Compliance Officer — all working collaboratively to run your business.**
+# BusinessOS
+
+> **A full-stack, agentic AI CRM platform featuring a team of autonomous AI agents — CEO, CFO, Sales Director, Market Analyst, and Compliance Officer — working collaboratively.**
 
 Built with **React + Vite**, **FastAPI**, **Google ADK (Agent Development Kit)**, and **Gemini 2.5 Flash**.
 
@@ -37,7 +39,7 @@ Modern businesses drown in operational complexity. A typical mid-market company 
 
 The result? **Executives spend 60% of their time gathering data instead of making decisions.** Small and mid-market companies cannot afford a full C-suite, yet they face the same strategic complexity as enterprise organizations.
 
-**The core question:** *What if an AI system could autonomously perform the work of an entire executive team — analyzing finances, monitoring sales pipelines, researching competitors, auditing compliance, and drafting communications — all in real-time, all from a single platform?*
+**The core question:** *What if an AI system could autonomously perform complex cross-functional workflows — analyzing finances, monitoring sales pipelines, researching competitors, auditing compliance, and drafting communications — all from a single platform?*
 
 ---
 
@@ -57,7 +59,7 @@ Traditional AI chatbots are **reactive**: they answer one question at a time and
 
 ## 💡 Solution Overview
 
-**AI-Powered Enterprise CRM** is a unified command center where a team of AI agents collaborates to run your business operations. It combines:
+**BusinessOS** is a unified command center where a team of AI agents collaborates to manage business operations. It combines:
 
 - A **real-time financial dashboard** with live KPIs (MRR, burn rate, runway).
 - A **multi-agent AI chat** where you converse with a virtual C-suite.
@@ -113,12 +115,12 @@ Built on the **Google Agent Development Kit (ADK)**, utilizing the `.agents/skil
 
 ## 🔒 Advanced Security (7-Pillar Defense)
 
-The Business OS moves beyond traditional security (JWT, bcrypt, RBAC) and implements state-of-the-art **Agentic Defense**:
+BusinessOS implements advanced **Agentic Defense** beyond traditional security measures (JWT, bcrypt, RBAC):
 
 * **Ephemeral Sandboxing (Pillar 1):** Natural language SQL execution is isolated in ephemeral, network-isolated sandboxes that self-destruct after execution.
-* **Just-In-Time Downscoping (Pillar 5):** The `CredentialBroker` ensures agents receive fresh, hyper-restricted credentials scoped *exactly* to the active task context.
+* **Just-In-Time Downscoping (Pillar 5):** The [`CredentialBroker`](app/security/credential_broker.py) ensures agents receive fresh, hyper-restricted credentials scoped *exactly* to the active task context.
 * **Vibe Diff & Cryptographic MFA (Pillar 5):** High-stakes actions require hardware MFA TOTP codes and present a translated "Vibe Diff" so users understand the exact execution trajectory before approving.
-* **Agentic SecOps & ABA (Pillar 6):** `AgentBehaviouralAnalytics` acts as a Red/Blue team triad, monitoring the Runtime AgBOM for anomaly rates and enforcing **Stateful Quarantines** against hallucinating agents.
+* **Agentic SecOps & ABA (Pillar 6):** [`AgentBehaviouralAnalytics`](app/security/agent_behavioural_analytics.py) acts as a Red/Blue team triad, monitoring the Runtime AgBOM for anomaly rates and enforcing **Stateful Quarantines** against hallucinating agents.
 * **Supply Chain Defence:** Configured with GitHub Actions CI/CD to block hallucinated or typosquatted packages dynamically requested by the agent using `pip-audit`.
 * **Zero-Trust Token Management:** Immediate JWT session revocation via dynamic token versioning upon role change or password reset.
 * **PII Scrubbing:** Emails, phone numbers, and credit cards are scrubbed via regex before reaching the LLM.
@@ -129,8 +131,8 @@ The Business OS moves beyond traditional security (JWT, bcrypt, RBAC) and implem
 
 We employ a complete "quality flywheel" to ensure vibe-coded implementations scale safely:
 
-* **Trajectory Evaluation:** Beyond just asserting final outputs, our `trajectory_evaluator.py` scores execution trajectories using `EXACT` and `IN_ORDER` modes against `.agents/skills/eval_cases.json`.
-* **Trace Mining & Clustering:** The FastAPI backend utilizes a failure sink. User corrections (e.g. "No, that's completely wrong") force a sub-2 satisfaction score, immediately dumping the full AgBOM trace to `failed_traces.jsonl`. Our `trace_miner.py` then clusters these failures with Gemini to identify systematic skill gaps.
+* **Trajectory Evaluation:** Beyond just asserting final outputs, our [`trajectory_evaluator.py`](app/eval/trajectory_evaluator.py) scores execution trajectories using `EXACT` and `IN_ORDER` modes against `.agents/skills/eval_cases.json`.
+* **Trace Mining & Clustering:** The FastAPI backend utilizes a failure sink. User corrections (e.g. "No, that's completely wrong") force a sub-2 satisfaction score, immediately dumping the full AgBOM trace to `failed_traces.jsonl`. Our [`trace_miner.py`](app/eval/trace_miner.py) then clusters these failures with Gemini to identify systematic skill gaps.
 
 ---
 
