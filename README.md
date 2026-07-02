@@ -186,7 +186,7 @@ Create a `.env` file in the root directory. To run the application fully locally
 | Environment Variable | Description | Example / Default |
 |----------------------|-------------|-------------------|
 | `DATABASE_URL` | Connection string for PostgreSQL (Neon) or local SQLite. | `postgresql://user:password@host/dbname?sslmode=require` (defaults to local `sqlite:///./business_os.db`) |
-| `SECRET_KEY` | Secret key used for signing JWT authentication tokens. | `super-secret-key-for-business-os` (must override in prod) |
+| `SECRET_KEY` | Secret key used for signing JWT authentication tokens. | `replace-with-openssl-rand-hex-32` (Must override in prod) |
 | `GEMINI_API_KEY` | Your Google Gemini API Key (if not using Vertex AI). | `AIzaSy...` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to your GCP Service Account JSON key (required if using Vertex AI and GCP services). | `./service-account-key.json` |
 | `GOOGLE_CLOUD_PROJECT` | Your Google Cloud Project ID. | `businessosproj` |
@@ -195,7 +195,8 @@ Create a `.env` file in the root directory. To run the application fully locally
 **Example `.env`:**
 ```env
 DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
-SECRET_KEY="your-secure-random-string"
+# Generate a secure secret using: openssl rand -hex 32
+SECRET_KEY="replace-with-openssl-rand-hex-32"
 GEMINI_API_KEY="AIzaSy..."
 ```
 
