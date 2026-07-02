@@ -27,12 +27,14 @@ Built with **React + Vite**, **FastAPI**, **Google ADK (Agent Development Kit)**
 - [Advanced Security (7-Pillar Defense)](#-advanced-security-7-pillar-defense)
 - [Evaluation-Driven Development](#-evaluation-driven-development)
 - [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
 - [Setup & Installation](#-setup--installation)
 - [Docker Deployment](#-docker-deployment)
 - [Screenshots & UI](#-screenshots--ui)
 - [Known Limitations & Roadmap](#-known-limitations--roadmap)
 - [Contributing](#-contributing)
 - [Acknowledgments & Contact](#-acknowledgments--contact)
+- [License](#-license)
 
 ---
 
@@ -163,6 +165,26 @@ uv run python -m app.eval.trajectory_evaluator
 | **AI / Agents** | Google ADK, Gemini 2.5 Flash, MCP |
 | **Security** | PyJWT (HS256), passlib (bcrypt), Cryptographic MFA, ABA |
 | **Observability/Eval**| Trace Miner, Trajectory Evaluator (`IN_ORDER`/`EXACT`) |
+
+---
+
+## 📂 Project Structure
+
+```text
+business-os/
+├── .agents/                 # ADK agent skills and evaluation cases
+├── app/                     # FastAPI Backend
+│   ├── eval/                # Trajectory evaluators and trace miners
+│   ├── security/            # CredentialBroker, AgentBehaviouralAnalytics
+│   ├── fast_api_app.py      # Main FastAPI entrypoint
+│   └── agent.py             # ADK Agent definitions and tools
+├── docs/                    # Architecture diagrams and screenshots
+├── frontend-react/          # React + Vite frontend application
+│   ├── src/                 # React components (Dashboard, Chat, War Room)
+│   └── package.json         # Node dependencies
+├── docker-compose.yml       # Docker orchestration
+└── README.md                # Project documentation
+```
 
 ---
 
