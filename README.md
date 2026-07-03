@@ -102,13 +102,39 @@ Built on the **Google Agent Development Kit (ADK)**, utilizing the `.agents/skil
 
 ### The Virtual Executive Team
 
-| Agent | Role | Specialized Tools | Key Capability |
-|-------|------|-------------------|----------------|
-| **CEO Agent** | Root orchestrator. Delegates tasks, synthesizes cross-functional insights. | `email_tool`, `drive_tool`, `skill_creator` | Multi-agent coordination, meta-skill generation |
-| **CFO Agent** | Financial analysis. Assesses MRR, expenses, burn rate. | `get_financial_summary`, `read_report` | Cash flow analysis, financial alerts |
-| **Sales Agent** | Pipeline management. Monitors deals, win rates. | `get_sales_pipeline`, `read_report` | Deal risk identification, funnel metrics |
-| **Market Agent** | Competitive intelligence. Researches competitors and industry growth. | `get_market_intelligence`, `fetch_market_news` | Real-time web intelligence |
-| **Compliance Agent**| Regulatory oversight. GDPR audits, risk registries. | `get_compliance_status`, `read_report` | Compliance scoring, gap analysis |
+The agents in the BusinessOS project act as a collaborative "Virtual Executive Team." Built using the Google Agent Development Kit (ADK) and powered by the **Gemini 2.5 Flash** model, they each specialize in specific business domains:
+
+#### 1. CEO Agent (Root Orchestrator)
+- **Role:** Chief Executive Officer. It leads the virtual team and is the main entry point for user requests.
+- **Capabilities:**
+  - Delegates tasks to specialist agents using a Directed Acyclic Graph (DAG) pattern (e.g., calling the CFO, then Sales, then Market/Compliance, before synthesizing a final report).
+  - Can draft professional emails for Board Updates using an email tool.
+  - Can generate new reusable Python skills dynamically using `skill_creator`.
+
+#### 2. CFO Agent
+- **Role:** Chief Financial Officer.
+- **Capabilities:** Analyzes the company's financial health by assessing Monthly Recurring Revenue (MRR), cash flow, expenses, burn rate, and runway.
+- **Tools:** Uses `get_financial_summary` to pull financial data, along with reading and writing documents to provide numbers-driven alerts and recommendations.
+
+#### 3. Sales Agent
+- **Role:** Sales Operations Manager.
+- **Capabilities:** Focuses on sales funnel performance. It monitors active pipeline deals, cycle lengths, win rates, conversion bottlenecks, and flags deals that are at risk.
+- **Tools:** Uses `get_sales_pipeline` along with reporting tools.
+
+#### 4. Market Agent
+- **Role:** Market Research Analyst.
+- **Capabilities:** Investigates external market intelligence, competitor pricing, market share, and industry growth trends. 
+- **Tools:** Uses `get_market_intelligence` and `fetch_market_news` to gather real-time data directly from the web.
+
+#### 5. Compliance Agent
+- **Role:** Compliance Officer.
+- **Capabilities:** Oversees regulatory risks, contract terms, policy validations, and GDPR compliance audits. It flags active compliance gaps and recommends security protocols.
+- **Tools:** Evaluates risk registries and audits using `get_compliance_status`.
+
+#### 6. Commerce Agent
+- **Role:** B2B Procurement Specialist.
+- **Capabilities:** Responsible for procuring datasets or SaaS licenses via an Agent Payments Protocol (AP2) and Universal Commerce Protocol (UCP).
+- **Tools:** Uses a specialized `ucp_checkout` tool that enforces strict role-based access control (only `Owner` or `Manager` roles can authorize these funds).
 
 ---
 
