@@ -170,7 +170,7 @@ const CompetitorAlert = ({ setActiveTab }) => {
 };
 
 const HomeTab = ({ setActiveTab }) => {
-  const { businessData, activeRole } = useContext(AppContext);
+  const { businessData, username } = useContext(AppContext);
 
   if (!businessData) {
     return (
@@ -192,7 +192,7 @@ const HomeTab = ({ setActiveTab }) => {
   return (
     <div className="animate-fade-in space-y-6 pb-12">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back, {activeRole}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome, {username}</h2>
         <p className="text-slate-500 dark:text-slate-400">Here's a high-level overview of the company's performance today.</p>
       </div>
 
