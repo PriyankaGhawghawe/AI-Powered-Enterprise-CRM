@@ -6,7 +6,7 @@
 
 *(Repository: **AI-Powered-Enterprise-CRM** — Product Name: **BusinessOS**)*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 ![Node 20](https://img.shields.io/badge/node-20-green.svg)
 
@@ -347,5 +347,5 @@ This project was proudly built for the **[Google AI Agents Hackathon](https://go
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Creative Commons Attribution 4.0 International License - see the [LICENSE](LICENSE) file for details.
 
