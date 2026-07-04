@@ -1319,7 +1319,7 @@ async def generate_sql(
             model="gemini-2.5-flash",
             contents=[schema_prompt, f"User Request: {req.query}"]
         )
-        sql_query = response.text.strip().strip("`").strip("sql").strip()
+        sql_query = response.text.replace("```sql", "").replace("```SQL", "").replace("```", "").strip()
         return {"sql": sql_query}
     except Exception as e:
         error_msg = str(e)
@@ -1434,10 +1434,10 @@ def execute_sql(
 
     sql = req.sql.strip()
     # Basic security check to prevent modifications
-    if not sql.upper().startswith("SELECT"):
+    if not (sql.upper().startswith("SELECT") or sql.upper().startswith("WITH")):
         raise HTTPException(
             status_code=400,
-            detail="Only SELECT statements are allowed for security reasons.",
+            detail="Only SELECT or WITH statements are allowed for security reasons.",
         )
 
     # Security restriction: prevent Employees from querying credentials, password hashes, or logs via raw SQL
