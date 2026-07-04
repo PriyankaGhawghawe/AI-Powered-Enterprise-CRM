@@ -12,8 +12,8 @@ def execute_sql_sandboxed(sql: str, db_path: str = "business_os.db"):
     """
     # Create an ephemeral script to run
     script_path = "ephemeral_sandbox_query.py"
-    # Ensure any single quotes in sql are properly escaped for the f-string execution
-    safe_sql = sql.replace("'", "''")
+    # Ensure the SQL string is safely encoded as a python literal
+    safe_sql_literal = repr(sql)
     
     database_url = os.environ.get("DATABASE_URL")
     if database_url and (database_url.startswith("postgresql://") or database_url.startswith("postgres://")):
@@ -27,7 +27,7 @@ try:
     db_url = os.environ.get("DATABASE_URL")
     conn = psycopg2.connect(db_url)
     cursor = conn.cursor()
-    cursor.execute('''{safe_sql}''')
+    cursor.execute({safe_sql_literal})
     if cursor.description:
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
@@ -52,7 +52,7 @@ try:
     conn = sqlite3.connect('{db_path}')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('''{safe_sql}''')
+    cursor.execute({safe_sql_literal})
     rows = cursor.fetchall()
     columns = list(rows[0].keys()) if rows else []
     data = [dict(r) for r in rows]
