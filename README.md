@@ -14,6 +14,9 @@
 
 Built with **React + Vite**, **FastAPI**, **Google ADK (Agent Development Kit)**, and **Gemini 2.5 Flash**.
 
+🌍 **Live Platform:** [https://business-os-20952320186.us-central1.run.app](https://business-os-20952320186.us-central1.run.app)  
+🎥 **Demo Video:** [https://youtu.be/F5__SWZ0X-o](https://youtu.be/F5__SWZ0X-o)
+
 ---
 
 ## 📋 Table of Contents
@@ -304,6 +307,7 @@ docker-compose up --build -d
 ### Environment Variables Note
 - **Build Time:** Docker does *not* need your database passwords or API keys during the `docker build` phase. It only requires standard dependencies.
 - **Run Time:** The containers will dynamically mount your local `.env` file at runtime. This ensures that sensitive credentials like `GEMINI_API_KEY` and `DATABASE_URL` are never baked into the Docker image itself.
+
 ---
 
 ## 📸 Screenshots & UI
